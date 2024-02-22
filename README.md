@@ -1,6 +1,15 @@
 # pokerface-ai
 
 An intelligent agent capable of playing Texas Hold'em Poker with you!
+Certainly! Here's the Prerequisites section:
+
+## Prerequisites
+
+Before you begin, ensure you have met the following requirements:
+
+- **Python:** Make sure you have Python 3.x installed on your machine. You can download it from [python.org](https://www.python.org/downloads/).
+
+- **Virtual Environments:** Familiarize yourself with Python virtual environments. You can find detailed instructions about how I created the Flask application in [this Medium article](https://medium.com/@albertnwachukwu/how-to-create-a-simple-flask-application-9be43f9aadcd).
 
 ## Getting Started
 
