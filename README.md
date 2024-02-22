@@ -1,7 +1,6 @@
 # pokerface-ai
 
 An intelligent agent capable of playing Texas Hold'em Poker with you!
-Certainly! Here's the Prerequisites section:
 
 ## Prerequisites
 
