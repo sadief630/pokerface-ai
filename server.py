@@ -1,8 +1,10 @@
 from flask import Flask
 import pydealer as dealer
 from pydealer.const import POKER_RANKS
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # This will enable CORS for all routes in your Flask app
 
 @app.route("/", methods=["GET"])
 def home():
@@ -19,7 +21,10 @@ def gethand():
     deck.shuffle()
     hand = deck.deal(7)
     hand.sort()
-    return str(hand)
+    list = []
+    for card in hand:
+        list.append(str(card))
+    return list
 
 if (__name__ == "__main__"):
     app.run()
