@@ -1,0 +1,127 @@
+.card-container {
+  perspective: 1000px;
+  width: 25mm;
+  height: 35mm;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s;
+}
+
+.card-container.flipped {
+  transform: rotateY(180deg);
+}
+
+.card {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  transform-style: preserve-3d;
+}
+
+.card-front,
+.card-back {
+  color: black;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  position: absolute;
+  display: flex;
+  background-color: rgb(243, 241, 239)
+}
+
+.playing-card {
+  width: 100%;
+  height: 100%;
+}
+
+.card-back {
+  border: 5px solid #414141; 
+  border-radius: 0.5em;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform: rotateY(180deg);
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.card-back-inner-border {
+  position: absolute;
+  width: calc(100% - 20px);
+  height: calc(100% - 20px);
+  border: 20px solid rgb(49, 49, 49);
+}
+
+.card-back-pattern {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image: repeating-linear-gradient(45deg,
+      #15358d7c,
+      #3b5cb0c8 5px,
+      rgb(243, 241, 239) 5px,
+      rgb(243, 241, 239) 10px);
+  opacity: 1;
+}
+
+
+.card-back-content {
+  color: white;
+  font-size: 20px;
+}
+
+
+.hand {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 30px;
+}
+
+.hand-card {
+  margin-right: 10px;
+}
+
+.card-front {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: 30px;
+  border: 2px solid #b2aeae;
+  border-radius: 0.5em;
+}
+
+.card-top,
+.card-bottom {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.card-bottom {
+  flex-direction: row-reverse;
+}
+
+.card-top {
+  align-items: flex-start;
+}
+
+.card-suit {
+  size: 28;
+  padding: 10px;
+}
+
+.card-value {
+  size: 28;
+  padding: -5px;
+  margin-right: -5px;
+  margin-left: -5px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}

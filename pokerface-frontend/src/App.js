@@ -1,25 +1,21 @@
 import './App.css';
-import TestComponent from './components/TestComponent';
-import { useState } from 'react';
-import Hand from './components/Hand';
+import { Route, Routes } from 'react-router-dom';
+import PokerGame from './pages/PokerGame/PokerGame';
+import HowToPlay from './pages/HowToPlay/HowToPlay';
+import Header from './components/Header/Header';
+import React, { useState, useEffect } from 'react';
 
 function App() {
-
-  const myhand = [
-    { value: 8, suit: "diamonds" },
-    { value: 11, suit: "hearts" },
-    { value: 1, suit: "clubs" },
-    { value: 10, suit: "spades" },
-    { value: 4, suit: "hearts" },
-  ];
-
   return (
-    <div>
-      <TestComponent></TestComponent>
-      <Hand hand={myhand}></Hand>
+    <div className="app-container">
+      <Header/>
+      <Routes>
+        <Route exact path='/' element={<PokerGame />}></Route>
+        <Route exact path='/how-to-play' element={<HowToPlay />}></Route>
+      </Routes>
     </div>
   );
 }
 
-
 export default App;
+

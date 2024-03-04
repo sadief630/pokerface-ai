@@ -1,0 +1,31 @@
+.start-screen-container {
+    text-align: center;
+    margin-top: 100px;
+    height: 100vh;
+}
+
+.start-screen-title {
+    font-size: 2rem;
+    align-items: center;
+}
+
+.start-screen-text {
+    font-size: 1.5em;
+}
+
+.start-screen-button {
+    font-size: 1.5rem;
+    padding: 15px 30px;
+    margin-top: 20px;
+    background-color: #1d428b;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: auto;
+
+    &:hover {
+        background-color: rgb(111, 147, 220);
+    }
+}
