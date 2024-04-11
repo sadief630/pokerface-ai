@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
 import './AgentConsole.css';
+import React, { useState, useEffect } from 'react';
 
-const AgentConsole = () => {
-  return (
-    <div className="agent-console">
-      <div className="action-buttons">
-        Agent
-      </div>
-    </div>
-  );
+const AgentConsole = ({ turnLabel }) => {
+    return (
+        <div className="agent-console">
+            <div className="text-style-title">
+                Intelligent Agent
+            </div>
+            <div className='text-style-body'>
+                {turnLabel}
+            </div>
+        </div>
+    );
 };
 
 export default AgentConsole;

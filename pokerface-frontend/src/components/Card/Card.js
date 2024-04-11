@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BsFillSuitSpadeFill } from "react-icons/bs";
 import { BsFillSuitClubFill } from "react-icons/bs";
 import { BsFillSuitDiamondFill } from "react-icons/bs";
@@ -8,12 +8,12 @@ import './Card.css';
 const Card = ({ value, suit, flipped }) => {
   const [isFlipped, setIsFlipped] = useState(flipped);
 
-  const handleCardClick = () => {
-    setIsFlipped(!isFlipped);
-  };
+  useEffect(() => {
+    setIsFlipped(flipped);
+  }, [flipped]);
 
   return (
-    <div className={`card-container ${isFlipped ? 'flipped' : ''}`} onClick={handleCardClick}>
+    <div className={`card-container ${isFlipped ? 'flipped' : ''}`}>
       <div className="card">
         <div className="card-front">
           <div className='card-top'>
@@ -38,7 +38,7 @@ const Card = ({ value, suit, flipped }) => {
 
 const getCardRank = (value) => {
   switch (value) {
-    case 1:
+    case 14:
       return 'A';
     case 11:
       return 'J';
@@ -53,13 +53,13 @@ const getCardRank = (value) => {
 
 const getSuitIcon = (suit) => {
   switch (suit) {
-    case 'hearts':
+    case 'Hearts':
       return <BsFillSuitHeartFill color='#A90505' />
-    case 'diamonds':
-      return <BsFillSuitDiamondFill />
-    case 'clubs':
+    case 'Diamonds':
+      return <BsFillSuitDiamondFill color='#A90505' />
+    case 'Clubs':
       return <BsFillSuitClubFill />
-    case 'spades':
+    case 'Spades':
       return <BsFillSuitSpadeFill />
     default:
       return <BsFillSuitSpadeFill />
