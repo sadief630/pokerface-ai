@@ -15,7 +15,7 @@ function PokerGame() {
     const [playerCards, setPlayerCards] = useState([]);
     const [turn, setTurn] = useState(0);
     const [active, setActive] = useState("player")
-    const[AITurnLabel, setAITurnLabel] = useState("Waiting on player...")
+    const [AITurnLabel, setAITurnLabel] = useState("Waiting on player...")
 
     const startGame = () => {
         fetch('http://127.0.0.1:8000/start')
@@ -72,42 +72,53 @@ function PokerGame() {
         fetchCommunityCards();
     };
 
-    
+
     // game end function
-    const evaluateGame = () => { 
+    const evaluateGame = () => {
         setTurn(6);
 
+        setAITurnLabel("Ai Loses!")
         // if a player folds, we need to award the pot to the ai.
         // if the ai folds, we need to award the pot to the player.
 
         console.log("Game Evaluation: A player folded or all of the cards are flipped.")
 
         // do game eval logic based off of community cards, player cards,
+
+        // give an option to play another round
+
+        setTimeout(() => {
+            setTurn(0);
+            fetchCommunityCards();
+            fetchHoleCards();
+            setActive("player");
+            setAITurnLabel("Waiting on player...")
+        }, 1000);
     }
 
     const handleAIMove = () => {
         setActive("ai");
         setAITurnLabel("Thinking...");
         // AI's move after a delay
+        const move = "check"
         setTimeout(() => {
-            // Perform AI move logic here (e.g., fetching data from API)
-            // Set the AI's turn label and display it in AgentConsole
-            // Reset AI's move display after one second
-            const move = "check"
-            setTimeout(() => {
-                setAITurnLabel("AI Move: " + move);
-                if(move == "fold"){
-                    // evaluate the game 
-                    setTurn(6);
-                }else{
-                    setTimeout(() => {
-                        setAITurnLabel("Waiting on Player...");
-                        setActive("player");
+            setAITurnLabel("AI Move: " + move);
+            if (move == "fold") {
+                // evaluate the game 
+                setTurn(6);
+            } else {
+                setTimeout(() => {
+                    setAITurnLabel("Waiting on Player...");
+                    setActive("player");
+                    if (turn == 0) {
+                        setTurn(3);
+                    } else {
                         setTurn(turn + 1); // Increment turn after AI's move
-                    }, 1000);
-                }
-            }, 1000);
+                    }
+                }, 1000);
+            }
         }, 1000);
+
     }
 
     const handlePlayerMove = (action, bet) => {
@@ -115,10 +126,10 @@ function PokerGame() {
         console.log('Player move:', action);
         console.log('Player bet: ' + bet);
 
-        if(action == 'fold'){
+        if (action == 'fold') {
             // evaluate the game, AI does not need to go
             setTurn(6);
-        }else{
+        } else {
             // add to pot, subtract from player money, let ai move.
             handleAIMove();
         }
@@ -127,10 +138,17 @@ function PokerGame() {
     useEffect(() => {
         console.log("TURN CHANGED: " + turn)
         if (turn >= 1 && turn <= 5 && communityCards.length > 0) {
-            // Flip one community card for each turn from 1 to 5
-            const updatedCommunityCards = [...communityCards];
-            updatedCommunityCards[turn - 1].flipped = false;
+            // Flip community cards for each turn from 1 to current turn
+            let updatedCommunityCards = [...communityCards];
+
+            for (let i = 0; i < turn; i++) {
+                // Modify properties of the array
+                updatedCommunityCards[i].flipped = false;
+            }
+            
+            // Update state with the modified array
             setCommunityCards(updatedCommunityCards);
+            
         } else if (turn === 6) {
             // Unflip all community cards when turn is 6 and evaluate the game
             const updatedCommunityCards = [...communityCards];
@@ -142,7 +160,7 @@ function PokerGame() {
             evaluateGame();
         }
     }, [turn]); // Include turn and communityCards in the dependency array
-    
+
     if (!started) {
         return (
             <div>
@@ -153,19 +171,19 @@ function PokerGame() {
 
     return (
         <>
-        <div className='poker-container'>
-            <GameState></GameState>
-            <div className="poker-table">
-                <AgentConsole turnLabel = {AITurnLabel}></AgentConsole>
-                <Hand hand={agentCards}></Hand>
-                <div className='community-cards'>
-                    <Hand hand={communityCards}></Hand>   
-                    <img width={320} src={Deck} alt="Deck"></img>
+            <div className='poker-container'>
+                <GameState></GameState>
+                <div className="poker-table">
+                    <AgentConsole turnLabel={AITurnLabel}></AgentConsole>
+                    <Hand hand={agentCards}></Hand>
+                    <div className='community-cards'>
+                        <Hand hand={communityCards}></Hand>
+                        <img width={320} src={Deck} alt="Deck"></img>
+                    </div>
+                    <Hand hand={playerCards}></Hand>
+                    <PlayerConsole maxRaiseValue={1000} onPlayerMove={handlePlayerMove} enabled={active == "player"}></PlayerConsole>
                 </div>
-                <Hand hand={playerCards}></Hand>
-                <PlayerConsole maxRaiseValue={1000} onPlayerMove={handlePlayerMove} enabled = {active == "player"}></PlayerConsole>
-            </div>
-        </div></>
+            </div></>
     );
 }
 

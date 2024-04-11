@@ -1,7 +1,7 @@
 .poker-console {
     width: 400px;
     background-color: #235484;
-    padding: 30px;
+    padding: 10px;
     border: 5px solid #0c2d51; /* Add a 5px solid black border */
     display: flex;
     flex-direction: column;
@@ -10,12 +10,28 @@
     border-radius: 50px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     margin-bottom: -150px;
+     padding-left: 20px;
+    padding-right: 20px;
 }
 
 .action-buttons {
     display: flex;
     flex-direction: row;
     margin-top: 10px;
+}
+
+
+.text-style-title {
+    font-size: 20px;
+    color: #fff;
+    text-align: center; /* Center the text */
+    font-weight: bold; /* Make the text bold */
+}
+
+.text-style-body {
+    font-size: 18px;
+    color: #fff;
+    text-align: center; /* Center the text */
 }
 
 button {

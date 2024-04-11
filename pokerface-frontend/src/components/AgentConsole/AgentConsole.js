@@ -8,6 +8,9 @@ const AgentConsole = ({ turnLabel }) => {
                 Intelligent Agent
             </div>
             <div className='text-style-body'>
+                $$$ : 1000
+            </div>
+            <div className='text-style-body'>
                 {turnLabel}
             </div>
         </div>

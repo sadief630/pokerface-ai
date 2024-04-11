@@ -56,7 +56,14 @@ const PlayerConsole = ({ maxRaiseValue, onPlayerMove, enabled }) => {
   if(!enabled){
     return(
     <div className="poker-console">
+       <div className='text-style-title'>
+              Player (You!)
+            </div>
+            <div className='text-style-body'>
+                $$$ : 1000
+            </div>
       <div className="action-buttons">
+
         <button disabled = {true}>Fold</button>
         {sliderValue > 0 ? (
           <button disabled = {true}>Raise</button>
@@ -78,6 +85,13 @@ const PlayerConsole = ({ maxRaiseValue, onPlayerMove, enabled }) => {
 
   return (
     <div className="poker-console">
+
+      <div className='text-style-title'>
+              Player (You!)
+            </div>
+            <div className='text-style-body'>
+                $$$ : 1000
+            </div>
       <div className="action-buttons">
         <button onClick={() => handleButtonClick('fold')}>Fold</button>
         {sliderValue > 0 ? (
@@ -86,6 +100,9 @@ const PlayerConsole = ({ maxRaiseValue, onPlayerMove, enabled }) => {
           <button onClick={() => handleButtonClick('check')}>Check</button>
         )}
       </div>
+
+    
+
       <PrettoSlider
         value={sliderValue}
         onChange={handleSliderChange}
