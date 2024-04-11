@@ -86,14 +86,17 @@ function PokerGame() {
         // do game eval logic based off of community cards, player cards,
 
         // give an option to play another round
-
         setTimeout(() => {
-            setTurn(0);
-            fetchCommunityCards();
-            fetchHoleCards();
-            setActive("player");
-            setAITurnLabel("Waiting on player...")
+            setCommunityCards([]);
+            setTimeout(() => {
+                setTurn(0);
+                fetchCommunityCards();
+                fetchHoleCards();
+                setActive("player");
+                setAITurnLabel("Waiting on player...")
+            }, 1000);
         }, 1000);
+
     }
 
     const handleAIMove = () => {
