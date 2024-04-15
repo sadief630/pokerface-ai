@@ -11,11 +11,22 @@ import './PokerGame.css';
 function PokerGame() {
     const [started, setStarted] = useState(false);
     const [communityCards, setCommunityCards] = useState([]);
-    const [agentCards, setAgentCards] = useState([]);
-    const [playerCards, setPlayerCards] = useState([]);
     const [turn, setTurn] = useState(0);
     const [active, setActive] = useState("player")
+    const [pot, setPot] = useState(0)
+
+    // agent variables
+    const [agentCards, setAgentCards] = useState([]);
     const [AITurnLabel, setAITurnLabel] = useState("Waiting on player...")
+    const [agentMoney, setAgentMoney] = useState(1000)
+    const [agentMove, setAgentMove] = useState(null)
+
+    // player variables
+    const [playerCards, setPlayerCards] = useState([]);
+    const [playerMoney, setPlayerMoney] = useState(1000);
+
+    const minimumBet = 20;
+    
 
     const startGame = () => {
         fetch('http://127.0.0.1:8000/start')
@@ -44,6 +55,7 @@ function PokerGame() {
             .then(data => {
                 setAgentCards(data.agent_hole);
                 setPlayerCards(data.player_hole);
+                setAgentMove(data.agent_move);
             })
             .catch(error => {
                 console.error('There was a problem fetching hole cards:', error);
@@ -76,18 +88,23 @@ function PokerGame() {
     // game end function
     const evaluateGame = () => {
         setTurn(6);
-
+        setActive("ai")
         setAITurnLabel("Ai Loses!")
         // if a player folds, we need to award the pot to the ai.
         // if the ai folds, we need to award the pot to the player.
 
         console.log("Game Evaluation: A player folded or all of the cards are flipped.")
 
-        // do game eval logic based off of community cards, player cards,
+        // if player cards better than agent cards: give pot to player
+        // for now we will just give the pot to the player every time
+        setPlayerMoney(playerMoney + pot)
 
+        // do game eval logic based off of community cards, player cards,
         // give an option to play another round
         setTimeout(() => {
             setCommunityCards([]);
+            // setPlayerCards([]);
+            // setAgentCards([]);
             setTimeout(() => {
                 setTurn(0);
                 fetchCommunityCards();
@@ -104,13 +121,18 @@ function PokerGame() {
         setAITurnLabel("Thinking...");
         // AI's move after a delay
         const move = "check"
+        const bet = 20
         setTimeout(() => {
             setAITurnLabel("AI Move: " + move);
+            setPot(pot + bet)
+            setAgentMoney(agentMoney - bet)
+
             if (move == "fold") {
                 // evaluate the game 
                 setTurn(6);
             } else {
                 setTimeout(() => {
+
                     setAITurnLabel("Waiting on Player...");
                     setActive("player");
                     if (turn == 0) {
@@ -121,18 +143,25 @@ function PokerGame() {
                 }, 1000);
             }
         }, 1000);
-
     }
 
     const handlePlayerMove = (action, bet) => {
         // Handle player move
-        console.log('Player move:', action);
+        console.log('Player move:' + action);
         console.log('Player bet: ' + bet);
+        setPot(pot + bet)
+        setPlayerMoney(playerMoney - bet)
 
         if (action == 'fold') {
             // evaluate the game, AI does not need to go
             setTurn(6);
         } else {
+            if(action == 'check'){
+                
+            }
+            if(action == 'raise'){
+
+            }
             // add to pot, subtract from player money, let ai move.
             handleAIMove();
         }
@@ -184,7 +213,9 @@ function PokerGame() {
                         <img width={320} src={Deck} alt="Deck"></img>
                     </div>
                     <Hand hand={playerCards}></Hand>
-                    <PlayerConsole maxRaiseValue={1000} onPlayerMove={handlePlayerMove} enabled={active == "player"}></PlayerConsole>
+                    <PlayerConsole onPlayerMove={handlePlayerMove} enabled={active == "player"}
+                                    funds = {playerMoney} minBet = {minimumBet}
+                    ></PlayerConsole>
                 </div>
             </div></>
     );

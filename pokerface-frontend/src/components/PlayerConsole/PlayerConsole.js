@@ -34,8 +34,8 @@ const PrettoSlider = styled(Slider)({
   },
 });
 
-const PlayerConsole = ({ maxRaiseValue, onPlayerMove, enabled }) => {
-  const [sliderValue, setSliderValue] = useState(0);
+const PlayerConsole = ({ onPlayerMove, enabled, funds, minBet}) => {
+  const [sliderValue, setSliderValue] = useState(minBet);
 
   const handleSliderChange = (event) => {
     setSliderValue(parseInt(event.target.value, 10));
@@ -60,7 +60,7 @@ const PlayerConsole = ({ maxRaiseValue, onPlayerMove, enabled }) => {
               Player (You!)
             </div>
             <div className='text-style-body'>
-                $$$ : 1000
+                $$$ : {funds}
             </div>
       <div className="action-buttons">
 
@@ -74,10 +74,10 @@ const PlayerConsole = ({ maxRaiseValue, onPlayerMove, enabled }) => {
       <PrettoSlider
         value={sliderValue}
         onChange={handleSliderChange}
-        min={0}
+        min={minBet}
         size="large"
         step={1}
-        max={maxRaiseValue}
+        max={funds}
         valueLabelDisplay="auto"
       />
     </div>);
@@ -90,11 +90,11 @@ const PlayerConsole = ({ maxRaiseValue, onPlayerMove, enabled }) => {
               Player (You!)
             </div>
             <div className='text-style-body'>
-                $$$ : 1000
+                $$$ : {funds}
             </div>
       <div className="action-buttons">
         <button onClick={() => handleButtonClick('fold')}>Fold</button>
-        {sliderValue > 0 ? (
+        {sliderValue > minBet ? (
           <button onClick={() => handleButtonClick('raise')}>Raise</button>
         ) : (
           <button onClick={() => handleButtonClick('check')}>Check</button>
@@ -106,10 +106,10 @@ const PlayerConsole = ({ maxRaiseValue, onPlayerMove, enabled }) => {
       <PrettoSlider
         value={sliderValue}
         onChange={handleSliderChange}
-        min={0}
+        min={minBet}
         size="large"
         step={1}
-        max={maxRaiseValue}
+        max={funds}
         valueLabelDisplay="auto"
       />
     </div>

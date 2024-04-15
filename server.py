@@ -143,8 +143,6 @@ def holecards():
     player_hole.sort()
     player_hole_list = serialize_cards(player_hole, 0)
 
-    agentMoney = agentMoney - agent_bet
-
     return jsonify(
         agent_hole = agent_hole_list,
         agent_hole_strength = agent_hole_strength,
