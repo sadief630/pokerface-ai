@@ -1,16 +1,22 @@
 import React, { useState } from 'react';
 import './GameState.css';
 
-const GameState = ({ currentPlayer, currentPot, currentBet }) => {
+const GameState = ({ currentPlayer, currentPot, result }) => {
   const [myTurn, setMyTurn] = useState(true)
   return (
     <div className="game-state-container">
       <div className="game-state-info">
         <div className="info-item">
+          <strong>Game Overview Console</strong>
+        </div>
+        <div className="info-item">
           <strong>Turn:</strong> {currentPlayer}
         </div>
         <div className="info-item">
-          <strong>Current Bet:</strong> ${currentPot}
+          <strong>Current Pot:</strong> ${currentPot}
+        </div>
+        <div className="info-item">
+        <strong>{result}</strong>
         </div>
       </div>
     </div>

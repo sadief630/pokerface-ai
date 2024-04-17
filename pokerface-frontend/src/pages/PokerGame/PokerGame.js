@@ -14,6 +14,7 @@ function PokerGame() {
     const [turn, setTurn] = useState(0);
     const [active, setActive] = useState("player")
     const [pot, setPot] = useState(0)
+    const [result, setResult] = useState("")
 
     // agent variables
     const [agentCards, setAgentCards] = useState([]);
@@ -24,6 +25,7 @@ function PokerGame() {
     // player variables
     const [playerCards, setPlayerCards] = useState([]);
     const [playerMoney, setPlayerMoney] = useState(1000);
+
 
     const minimumBet = 20;
     
@@ -82,60 +84,103 @@ function PokerGame() {
         startGame();
         fetchHoleCards();
         fetchCommunityCards();
+        // postBlinds(); // dealer posts 10, non-dealer posts 20.
     };
 
-
-    // game end function
-    const evaluateGame = () => {
+    const calculateBestHand = async (hand, communityCards) => {
+        // Create an object with the player's hand and community cards
+        const requestData = {
+            hand: hand,
+            communityCards: communityCards
+        };
+        // Make an API request to the evaluateHand endpoint
+        try {
+            const response = await fetch('http://127.0.0.1:8000/evaluatehand', {
+                method: 'POST', // Use the POST method to send data in the request body
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+    
+            const data = await response.json(); // Parse the JSON response
+            // The API response should contain the score and handType
+            return data;
+        } catch (error) {
+            console.error('There was a problem evaluating the hand score:', error);
+            // Handle errors appropriately (you can choose to return an object with a default score and type)
+            return { score: 0, handType: 'Error' };
+        }
+    };
+    
+    const evaluateGame = async () => {
+        console.log("Game Evaluation: A player folded or all of the cards are flipped.");
         setTurn(6);
-        setActive("ai")
-        setAITurnLabel("Ai Loses!")
-        // if a player folds, we need to award the pot to the ai.
-        // if the ai folds, we need to award the pot to the player.
-
-        console.log("Game Evaluation: A player folded or all of the cards are flipped.")
-
-        // if player cards better than agent cards: give pot to player
-        // for now we will just give the pot to the player every time
-        setPlayerMoney(playerMoney + pot)
-
-        // do game eval logic based off of community cards, player cards,
-        // give an option to play another round
+        setActive("ai");
+        
+        // Compare player and AI hands
+        const playerBestHand = await calculateBestHand(playerCards, communityCards);
+        const agentBestHand = await calculateBestHand(agentCards, communityCards);
+    
+        console.log(agentBestHand);
+        console.log(playerBestHand);
+    
+        if (playerBestHand.score > agentBestHand.score) {
+            // Player wins the pot
+            setPlayerMoney(playerMoney + pot);
+            setAITurnLabel("Scoring");
+            setResult(`Player wins the pot with a ${playerBestHand.handType}!`);
+        } else if (playerBestHand.score < agentBestHand.score) {
+            // AI wins the pot
+            setAgentMoney(agentMoney + pot);
+            setAITurnLabel("Scoring");
+            setResult(`AI wins the pot with a ${playerBestHand.handType}!`);
+        } else {
+            // It's a tie, split the pot
+            const splitPot = pot / 2;
+            setPlayerMoney(playerMoney + splitPot);
+            setAgentMoney(agentMoney + splitPot);
+            setAITurnLabel("Scoring");
+            setResult(`It's a tie! Each player had a ${playerBestHand.handType}!`);
+        }
+        
+        // Reset the pot to zero
+        setPot(0);
         setTimeout(() => {
             setCommunityCards([]);
-            // setPlayerCards([]);
-            // setAgentCards([]);
             setTimeout(() => {
                 setTurn(0);
                 fetchCommunityCards();
                 fetchHoleCards();
                 setActive("player");
-                setAITurnLabel("Waiting on player...")
+                setAITurnLabel("Waiting on player...");
+                setResult("");
             }, 1000);
         }, 1000);
+    };
 
-    }
 
     const handleAIMove = () => {
         setActive("ai");
         setAITurnLabel("Thinking...");
-        // AI's move after a delay
         const move = "check"
         const bet = 20
+        setPot(pot + bet)
+        setAgentMoney(agentMoney - bet)
         setTimeout(() => {
             setAITurnLabel("AI Move: " + move);
-            setPot(pot + bet)
-            setAgentMoney(agentMoney - bet)
-
-            if (move == "fold") {
+            if (move === "fold") {
                 // evaluate the game 
                 setTurn(6);
             } else {
                 setTimeout(() => {
-
                     setAITurnLabel("Waiting on Player...");
                     setActive("player");
-                    if (turn == 0) {
+                    if (turn === 0) {
                         setTurn(3);
                     } else {
                         setTurn(turn + 1); // Increment turn after AI's move
@@ -152,14 +197,14 @@ function PokerGame() {
         setPot(pot + bet)
         setPlayerMoney(playerMoney - bet)
 
-        if (action == 'fold') {
+        if (action === 'fold') {
             // evaluate the game, AI does not need to go
             setTurn(6);
         } else {
-            if(action == 'check'){
+            if(action === 'check'){
                 
             }
-            if(action == 'raise'){
+            if(action === 'raise'){
 
             }
             // add to pot, subtract from player money, let ai move.
@@ -184,10 +229,17 @@ function PokerGame() {
         } else if (turn === 6) {
             // Unflip all community cards when turn is 6 and evaluate the game
             const updatedCommunityCards = [...communityCards];
-            // Use forEach to iterate through each card and unflip it
+            // reveal all community cards
             updatedCommunityCards.forEach((card) => {
                 card.flipped = false;
             });
+            //reveal all agent cards
+            const revealedAgentCards = [...agentCards];
+            agentCards.forEach((card) => {
+                card.flipped = false;
+            });
+
+            setAgentCards(revealedAgentCards);
             setCommunityCards(updatedCommunityCards);
             evaluateGame();
         }
@@ -204,16 +256,16 @@ function PokerGame() {
     return (
         <>
             <div className='poker-container'>
-                <GameState></GameState>
+                <GameState currentPlayer={active} currentPot={pot} result = {result}></GameState>
                 <div className="poker-table">
-                    <AgentConsole turnLabel={AITurnLabel}></AgentConsole>
+                    <AgentConsole turnLabel={AITurnLabel} agentMoney = {agentMoney}></AgentConsole>
                     <Hand hand={agentCards}></Hand>
                     <div className='community-cards'>
                         <Hand hand={communityCards}></Hand>
                         <img width={320} src={Deck} alt="Deck"></img>
                     </div>
                     <Hand hand={playerCards}></Hand>
-                    <PlayerConsole onPlayerMove={handlePlayerMove} enabled={active == "player"}
+                    <PlayerConsole onPlayerMove={handlePlayerMove} enabled={active === "player"}
                                     funds = {playerMoney} minBet = {minimumBet}
                     ></PlayerConsole>
                 </div>

@@ -9,9 +9,10 @@
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
     display: flex;
-    align-items: center;
+    
     align-content: center;
-    text-align: center;
+    width: 300px;
+    height: 200px;
   }
   
   .game-state-info {

@@ -1,14 +1,14 @@
 import './AgentConsole.css';
 import React, { useState, useEffect } from 'react';
 
-const AgentConsole = ({ turnLabel }) => {
+const AgentConsole = ({ turnLabel, agentMoney }) => {
     return (
         <div className="agent-console">
             <div className="text-style-title">
                 Intelligent Agent
             </div>
             <div className='text-style-body'>
-                $$$ : 1000
+                $$$ : {agentMoney}
             </div>
             <div className='text-style-body'>
                 {turnLabel}
