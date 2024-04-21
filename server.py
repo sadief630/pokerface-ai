@@ -74,8 +74,8 @@ def evaluate_potential(current_potential, hand, remaining_deck_set):
     potential = 0
     if num_unflipped_community_cards == 0:
         return potential
-
     possible_future_community_cards = list(combinations(remaining_deck_set, num_unflipped_community_cards))
+    combo_count = 0
     for combination in possible_future_community_cards:
         combination_set = [
             {"suit": suit, "value": value}
@@ -83,9 +83,15 @@ def evaluate_potential(current_potential, hand, remaining_deck_set):
         ]
         score = evaluate_hand(combination_set, hand)
         score = score.get("score", 0)  # Ensure score exists
-        if score > current_potential:
-            potential += score / (len(remaining_deck_set) * len(remaining_deck_set))
-
+        num_remaining = len(remaining_deck_set) - num_unflipped_community_cards
+        combo_count += 1
+        if(num_unflipped_community_cards == 1):
+            if score > current_potential:
+                potential += score / (num_remaining)
+        elif(num_unflipped_community_cards == 2):
+            if score > current_potential:
+                potential += score / (num_remaining * num_remaining)
+ 
     print(hand)
     print("the potential of this hand is : " + str(potential))
     return potential
@@ -124,13 +130,8 @@ def agent_win_probability(agent_cards, visible_cards):
             {"suit": suit, "value": value}
             for suit, value in opponent_hand
         ]
-
         opponent_best_hand = evaluate_hand(opponent_hand_dict_list, visible_cards)
         opponent_best_hand = opponent_best_hand["score"]
-
-        # print("OPP HAND STRENGTH")
-        # print(opponent_best_hand)
-
         # Compare agent's hand to opponent's hand
         if agent_hand_strength > opponent_best_hand:
             worse_hands_count += 1
@@ -178,7 +179,7 @@ def get_agent_move():
     if hand_strength > 0.7:
         move = "raise"
         amountRaised = hand_strength * 40 + minimumBet
-    elif hand_strength >= 0.4:
+    elif hand_strength >= 0.5:
         move = "call"
         amountRaised = minimumBet
     return jsonify({"move": move, "raise": round(amountRaised)})
