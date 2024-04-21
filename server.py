@@ -75,7 +75,6 @@ def evaluate_potential(current_potential, hand, remaining_deck_set):
     if num_unflipped_community_cards == 0:
         return potential
     possible_future_community_cards = list(combinations(remaining_deck_set, num_unflipped_community_cards))
-    combo_count = 0
     for combination in possible_future_community_cards:
         combination_set = [
             {"suit": suit, "value": value}
@@ -84,7 +83,6 @@ def evaluate_potential(current_potential, hand, remaining_deck_set):
         score = evaluate_hand(combination_set, hand)
         score = score.get("score", 0)  # Ensure score exists
         num_remaining = len(remaining_deck_set) - num_unflipped_community_cards
-        combo_count += 1
         if(num_unflipped_community_cards == 1):
             if score > current_potential:
                 potential += score / (num_remaining)
