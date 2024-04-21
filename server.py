@@ -3,6 +3,7 @@ import pydealer as dealer
 from pydealer.const import POKER_RANKS
 from flask_cors import CORS
 from collections import Counter
+from itertools import combinations
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes in your Flask app
@@ -68,16 +69,30 @@ def home():
 #     "High Card": 1
 # }
 
-# now i need a way to evaluate hand potential without introducing unncessary time complexity.
-# i need a function similar to the chen formula that evaluates potential when there are some community cards missing.
+def evaluate_potential(current_potential, hand, remaining_deck_set):
+    num_unflipped_community_cards = 7 - len(hand)
+    potential = 0
+    if num_unflipped_community_cards == 0:
+        return potential
 
-def evaluate_potential(hand, unflipped_cards):
-    return 0
+    possible_future_community_cards = list(combinations(remaining_deck_set, num_unflipped_community_cards))
+    for combination in possible_future_community_cards:
+        combination_set = [
+            {"suit": suit, "value": value}
+            for suit, value in combination
+        ]
+        score = evaluate_hand(combination_set, hand)
+        score = score.get("score", 0)  # Ensure score exists
+        if score > current_potential:
+            potential += score / (len(remaining_deck_set) * len(remaining_deck_set))
+
+    print(hand)
+    print("the potential of this hand is : " + str(potential))
+    return potential
 
 # However, since there are more cards to come on the flop and turn, the present strength of a hand is insufficient information. 
 # For this reason, post-flop hand evaluation is broken into two parts: strength and potential.
 def agent_win_probability(agent_cards, visible_cards):
-    from itertools import combinations
     full_deck = [
         {"suit": "Hearts", "value": i} for i in range(2, 15)
     ] + [{"suit": "Diamonds", "value": i} for i in range(2, 15)
@@ -100,6 +115,9 @@ def agent_win_probability(agent_cards, visible_cards):
     agent_hand_strength = evaluate_hand(agent_cards, visible_cards) # example return {"score": hand_ranking_scores["Four of a Kind"], "handType": "Four of a Kind"}
     agent_hand_strength = agent_hand_strength["score"]
 
+    agent_hand_potential = evaluate_potential(agent_hand_strength, agent_cards + visible_cards, remaining_deck_set)
+    agent_hand_strength = agent_hand_strength + agent_hand_potential
+
     # Evaluate each possible current opponent hand strength
     for opponent_hand in possible_opponent_hands:
         opponent_hand_dict_list = [
@@ -109,9 +127,9 @@ def agent_win_probability(agent_cards, visible_cards):
 
         opponent_best_hand = evaluate_hand(opponent_hand_dict_list, visible_cards)
         opponent_best_hand = opponent_best_hand["score"]
-        
-        print("OPP HAND STRENGTH")
-        print(opponent_best_hand)
+
+        # print("OPP HAND STRENGTH")
+        # print(opponent_best_hand)
 
         # Compare agent's hand to opponent's hand
         if agent_hand_strength > opponent_best_hand:
@@ -121,6 +139,10 @@ def agent_win_probability(agent_cards, visible_cards):
         else:
             equal_hands_count += 1
 
+    print("AGENT HAND")
+    print(agent_cards + visible_cards)
+    print("AGENT HAND POTENTIAL")
+    print(agent_hand_potential)
     print("AGENT HAND STRENGTH")
     print(agent_hand_strength)
     print("WORSE HANDS")

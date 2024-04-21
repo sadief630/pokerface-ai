@@ -258,7 +258,6 @@ function PokerGame() {
         }
     };
     
-    
     const handlePlayerMove = (action, bet) => {
         setPlayerBet(bet);
         setPlayerMove(action);
@@ -275,13 +274,11 @@ function PokerGame() {
         }
     };
     
-
     useEffect(() => {
         console.log("TURN CHANGED: " + turn)
         if (turn >= 1 && turn <= 5 && communityCards.length > 0) {
             // Flip community cards for each turn from 1 to current turn
             let updatedCommunityCards = [...communityCards];
-
             for (let i = 0; i < turn; i++) {
                 // Modify properties of the array
                 updatedCommunityCards[i].flipped = false;
