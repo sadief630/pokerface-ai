@@ -11,7 +11,7 @@ CORS(app)  # Enable CORS for all routes in your Flask app
 deck = None
 playerMoney = 1000
 agentMoney = 1000
-
+minimumBet = 20
 
 def get_deck():
     global deck
@@ -24,7 +24,6 @@ def init_money():
     global agentMoney
     playerMoney = 1000
     agentMoney = 1000
-
 
 def getCardNum(card):
     if(card.value == "Ace"):
@@ -56,6 +55,111 @@ def serialize_cards(hand, flipCount):
 def home():
     return "The backend is running for your poker game!"
 
+# hand_ranking_scores = {
+#     "Royal Flush": 10,
+#     "Straight Flush": 9,
+#     "Four of a Kind": 8,
+#     "Full House": 7,
+#     "Flush": 6,
+#     "Straight": 5,
+#     "Three of a Kind": 4,
+#     "Two Pair": 3,
+#     "One Pair": 2,
+#     "High Card": 1
+# }
+
+# now i need a way to evaluate hand potential without introducing unncessary time complexity.
+# i need a function similar to the chen formula that evaluates potential when there are some community cards missing.
+
+def evaluate_potential(hand, unflipped_cards):
+    return 0
+
+# However, since there are more cards to come on the flop and turn, the present strength of a hand is insufficient information. 
+# For this reason, post-flop hand evaluation is broken into two parts: strength and potential.
+def agent_win_probability(agent_cards, visible_cards):
+    from itertools import combinations
+    full_deck = [
+        {"suit": "Hearts", "value": i} for i in range(2, 15)
+    ] + [{"suit": "Diamonds", "value": i} for i in range(2, 15)
+    ] + [{"suit": "Clubs", "value": i} for i in range(2, 15)
+    ] + [{"suit": "Spades", "value": i} for i in range(2, 15)]
+    # Convert agent and visible cards to sets of tuples for easy removal
+    agent_cards_set = set((card["suit"], card["value"]) for card in agent_cards)
+    visible_cards_set = set((card["suit"], card["value"]) for card in visible_cards)
+    # Remove agent's and visible community cards from the full deck
+    remaining_deck_set = set((card["suit"], card["value"]) for card in full_deck) - agent_cards_set - visible_cards_set
+    # Generate all possible opponent hands (two-card combinations)
+    possible_opponent_hands = list(combinations(remaining_deck_set, 2))
+    
+    # Initialize counts for hands better, equal to, and worse than the agent's hand
+    better_hands_count = 0
+    equal_hands_count = 0
+    worse_hands_count = 0
+    
+    # Evaluate agent's current hand strength
+    agent_hand_strength = evaluate_hand(agent_cards, visible_cards) # example return {"score": hand_ranking_scores["Four of a Kind"], "handType": "Four of a Kind"}
+    agent_hand_strength = agent_hand_strength["score"]
+
+    # Evaluate each possible current opponent hand strength
+    for opponent_hand in possible_opponent_hands:
+        opponent_hand_dict_list = [
+            {"suit": suit, "value": value}
+            for suit, value in opponent_hand
+        ]
+
+        opponent_best_hand = evaluate_hand(opponent_hand_dict_list, visible_cards)
+        opponent_best_hand = opponent_best_hand["score"]
+        
+        print("OPP HAND STRENGTH")
+        print(opponent_best_hand)
+
+        # Compare agent's hand to opponent's hand
+        if agent_hand_strength > opponent_best_hand:
+            worse_hands_count += 1
+        elif agent_hand_strength < opponent_best_hand:
+            better_hands_count += 1
+        else:
+            equal_hands_count += 1
+
+    print("AGENT HAND STRENGTH")
+    print(agent_hand_strength)
+    print("WORSE HANDS")
+    print(worse_hands_count)
+    print("BETTER HANDS")
+    print(better_hands_count)
+    print("EQUAL HANDS")
+    print(equal_hands_count)
+    
+    # Calculate hand strength (probability that the agent's hand is the strongest)
+    total_opponent_hands = len(possible_opponent_hands)
+    hand_strength = (
+        (worse_hands_count + 0.5 * equal_hands_count) / total_opponent_hands
+    )
+    return hand_strength
+
+@app.route("/get_agent_move", methods=["POST"])
+def get_agent_move():
+    global minimumBet
+    data = request.get_json()
+    # Get the agent's hole cards and the community cards from the request
+    agent_cards = list(data.get('agentCards'))  # E.g., [{suit: "Diamonds", value: 14}, {suit: "Spades", value: 2}]
+    visible_cards = data.get('visibleCards')  # E.g., [{suit: "Diamonds", value: 14}, {suit: "Spades", value: 2}, {suit: "Clubs", value: 7}]
+    # Validate the input data
+    if not agent_cards or not visible_cards:
+        return jsonify({"error": "Invalid input data"}), 400
+    # Calculate hand strength
+    hand_strength = agent_win_probability(agent_cards, visible_cards)
+    # Determine the move based on hand strength
+    move = "fold"  # Default move
+    amountRaised = 0
+    # Probability Decisions for moves 
+    if hand_strength > 0.7:
+        move = "raise"
+        amountRaised = hand_strength * 40 + minimumBet
+    elif hand_strength >= 0.4:
+        move = "call"
+        amountRaised = minimumBet
+    return jsonify({"move": move, "raise": round(amountRaised)})
 
 # Chen formula
 def chen_strength(cards):
@@ -112,8 +216,7 @@ def start():
 
 @app.route("/holecards", methods=["GET"])
 def holecards():
-    if deck is None:
-       get_deck()
+    get_deck()
     global playerMoney
     global agentMoney
 
@@ -128,10 +231,10 @@ def holecards():
     if(agent_hole_strength >= 10):
         agent_bet = (agent_hole_strength / 1.5) * 15
         agent_move = "raise"
-    elif(agent_hole_strength >= 8):
+    elif(agent_hole_strength >= 7):
         agent_move = "raise"
         agent_bet = (agent_hole_strength / 2.2) * 10
-    elif(agent_hole_strength >= 4):
+    elif(agent_hole_strength >= 2.5):
         agent_move = "call"
         agent_bet = minimum_bet
     else:
@@ -163,7 +266,7 @@ def communitycards():
 
 def evaluate_hand(hand, community_cards):
     # Combine hand and community cards
-    all_cards = hand + community_cards
+    all_cards = list(hand) + community_cards
     # Define the hand ranking scores
     hand_ranking_scores = {
         "Royal Flush": 10,
@@ -177,6 +280,9 @@ def evaluate_hand(hand, community_cards):
         "One Pair": 2,
         "High Card": 1
     }
+
+
+    print(all_cards)
     # Check each hand type in descending order of ranking
     if check_royal_flush(all_cards):
         return {"score": hand_ranking_scores["Royal Flush"], "handType": "Royal Flush"}

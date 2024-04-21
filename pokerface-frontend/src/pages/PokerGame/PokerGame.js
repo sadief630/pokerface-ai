@@ -15,20 +15,22 @@ function PokerGame() {
     const [active, setActive] = useState("player")
     const [pot, setPot] = useState(0)
     const [result, setResult] = useState("")
-
     // agent variables
     const [agentCards, setAgentCards] = useState([]);
     const [AITurnLabel, setAITurnLabel] = useState("Waiting on player...")
     const [agentMoney, setAgentMoney] = useState(1000)
     const [agentMove, setAgentMove] = useState(null)
+    const [agentBet, setAgentBet] = useState(null)
+    const [agentFolded, setAgentFolded] = useState(false);
 
     // player variables
     const [playerCards, setPlayerCards] = useState([]);
     const [playerMoney, setPlayerMoney] = useState(1000);
-
+    const [playerMove, setPlayerMove] = useState(null);
+    const [playerBet, setPlayerBet] = useState(null);
+    const [playerFolded, setPlayerFolded] = useState(false);
 
     const minimumBet = 20;
-    
 
     const startGame = () => {
         fetch('http://127.0.0.1:8000/start')
@@ -58,6 +60,7 @@ function PokerGame() {
                 setAgentCards(data.agent_hole);
                 setPlayerCards(data.player_hole);
                 setAgentMove(data.agent_move);
+                setAgentBet(data.agent_bet);
             })
             .catch(error => {
                 console.error('There was a problem fetching hole cards:', error);
@@ -80,6 +83,33 @@ function PokerGame() {
             });
     };
 
+    const fetchAgentMove = async () => {
+        const visibleCards = communityCards.filter(card => !card.flipped);
+        console.log("visibleCards: ", visibleCards); // Check if visibleCards are correct
+        try {
+            const response = await fetch('http://127.0.0.1:8000/get_agent_move', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    agentCards: agentCards,
+                    visibleCards: visibleCards,
+                }),
+            });
+    
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const data = await response.json();
+            console.log("Agent Move Response:", data);
+            const { move, raise } = data;
+            return {move, raise};
+        } catch (error) {
+            console.error('Error fetching agent move:', error);
+        }
+    };
+    
     const handleStartGame = () => {
         startGame();
         fetchHoleCards();
@@ -106,7 +136,6 @@ function PokerGame() {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
-    
             const data = await response.json(); // Parse the JSON response
             // The API response should contain the score and handType
             return data;
@@ -119,33 +148,43 @@ function PokerGame() {
     
     const evaluateGame = async () => {
         console.log("Game Evaluation: A player folded or all of the cards are flipped.");
-        setTurn(6);
         setActive("ai");
-        
-        // Compare player and AI hands
         const playerBestHand = await calculateBestHand(playerCards, communityCards);
         const agentBestHand = await calculateBestHand(agentCards, communityCards);
-    
-        console.log(agentBestHand);
-        console.log(playerBestHand);
-    
-        if (playerBestHand.score > agentBestHand.score) {
-            // Player wins the pot
+        console.log("AGENT HAND: " + JSON.stringify(agentBestHand));
+        console.log("PLAYER HAND: " + JSON.stringify(playerBestHand));
+        if(agentFolded){
+            setAITurnLabel(`Agent folded. Player wins the pot with a ${agentBestHand.handType}!`);
+            setResult(`Agent folded. Player wins the pot with a ${agentBestHand.handType}!`)
             setPlayerMoney(playerMoney + pot);
-            setAITurnLabel("Scoring");
-            setResult(`Player wins the pot with a ${playerBestHand.handType}!`);
-        } else if (playerBestHand.score < agentBestHand.score) {
-            // AI wins the pot
+            setAgentFolded(false)
+        }
+        else if(playerFolded){
+            setAITurnLabel(`Player folded. AI wins the pot with a ${playerBestHand.handType}!`);
+            setResult(`Player folded. AI wins the pot with a ${playerBestHand.handType}!`)
             setAgentMoney(agentMoney + pot);
-            setAITurnLabel("Scoring");
-            setResult(`AI wins the pot with a ${playerBestHand.handType}!`);
-        } else {
-            // It's a tie, split the pot
-            const splitPot = pot / 2;
-            setPlayerMoney(playerMoney + splitPot);
-            setAgentMoney(agentMoney + splitPot);
-            setAITurnLabel("Scoring");
-            setResult(`It's a tie! Each player had a ${playerBestHand.handType}!`);
+            setPlayerFolded(false)
+        }
+        else{
+            // Compare player and AI hands
+            if (playerBestHand.score > agentBestHand.score) {
+                // Player wins the pot
+                setPlayerMoney(playerMoney + pot);
+                setAITurnLabel(`Player wins the pot with a ${playerBestHand.handType}!`);
+                setResult(`Player wins the pot with a ${playerBestHand.handType}!`);
+            } else if (playerBestHand.score < agentBestHand.score) {
+                // AI wins the pot
+                setAgentMoney(agentMoney + pot);
+                setAITurnLabel(`AI wins the pot with a ${agentBestHand.handType}!`);
+                setResult(`AI wins the pot with a ${agentBestHand.handType}!`);
+            } else {
+                // It's a tie, split the pot
+                const splitPot = pot / 2;
+                setPlayerMoney(playerMoney + splitPot);
+                setAgentMoney(agentMoney + splitPot);
+                setAITurnLabel(`It's a tie! Each player had a ${playerBestHand.handType}!`);
+                setResult(`It's a tie! Each player had a ${playerBestHand.handType}!`);
+            }
         }
         
         // Reset the pot to zero
@@ -163,54 +202,79 @@ function PokerGame() {
         }, 1000);
     };
 
-
-    const handleAIMove = () => {
+    const handleAIMove = async () => {
+        console.log("Handling AI Move...");
         setActive("ai");
         setAITurnLabel("Thinking...");
-        const move = "check"
-        const bet = 20
-        setPot(pot + bet)
-        setAgentMoney(agentMoney - bet)
-        setTimeout(() => {
-            setAITurnLabel("AI Move: " + move);
-            if (move === "fold") {
-                // evaluate the game 
-                setTurn(6);
-            } else {
-                setTimeout(() => {
-                    setAITurnLabel("Waiting on Player...");
-                    setActive("player");
-                    if (turn === 0) {
-                        setTurn(3);
-                    } else {
-                        setTurn(turn + 1); // Increment turn after AI's move
-                    }
-                }, 1000);
-            }
-        }, 1000);
-    }
-
-    const handlePlayerMove = (action, bet) => {
-        // Handle player move
-        console.log('Player move:' + action);
-        console.log('Player bet: ' + bet);
-        setPot(pot + bet)
-        setPlayerMoney(playerMoney - bet)
-
-        if (action === 'fold') {
-            // evaluate the game, AI does not need to go
-            setTurn(6);
+        
+        let agentMoveData;
+        if (turn !== 0) {
+            agentMoveData = await fetchAgentMove(); // Wait for fetchAgentMove to complete
+            const { move, raise } = agentMoveData;
+            console.log("Agent move was: " + move + " and the bet was: " + raise);
+            
+            setTimeout(() => {
+                setAITurnLabel("Agent move was: " + move + " and the bet was: " + raise);
+                if (move === 'fold') {
+                    setAgentFolded(true);
+                    setTurn(6);
+                } else {
+                    setTimeout(() => {
+                        setAgentMoney(prevAgentMoney => prevAgentMoney - raise);
+                        setPot(prevPot => prevPot + raise); // Use functional update to ensure correct state
+                        setAITurnLabel("Waiting on Player...");
+                        setActive("player");
+                        
+                        if (turn === 0) {
+                            setTurn(3);
+                        } else {
+                            setTurn(prevTurn => prevTurn + 1); // Increment turn after AI's move
+                        }
+                    }, 1000);
+                }
+            }, 1000);
         } else {
-            if(action === 'check'){
-                
-            }
-            if(action === 'raise'){
-
-            }
-            // add to pot, subtract from player money, let ai move.
-            handleAIMove();
+            setTimeout(() => {
+                console.log("Agent move was: " + agentMove + " and the bet was: " + agentBet);
+                setAITurnLabel("Agent move was: " + agentMove + " and the bet was: " + agentBet);
+                if (agentMove === 'fold') {
+                    setAgentFolded(true);
+                    setTurn(6);
+                } else {
+                    setTimeout(() => {
+                        setAgentMoney(prevAgentMoney => prevAgentMoney - agentBet);
+                        setPot(prevPot => prevPot + agentBet); // Use functional update to ensure correct state
+                        setAITurnLabel("Waiting on Player...");
+                        setActive("player");
+                        
+                        if (turn === 0) {
+                            setTurn(3);
+                        } else {
+                            setTurn(prevTurn => prevTurn + 1); // Increment turn after AI's move
+                        }
+                    }, 1000);
+                }
+            }, 1000);
         }
     };
+    
+    
+    const handlePlayerMove = (action, bet) => {
+        setPlayerBet(bet);
+        setPlayerMove(action);
+        if (action === 'fold') {
+            setPlayerFolded(true);
+            setTurn(6);
+        } else {
+            console.log('Player move was:' + action + " and the bet was: " + bet);
+            setTimeout(() => {
+                setPlayerMoney(prevPlayerMoney => prevPlayerMoney - bet);
+                setPot(prevPot => prevPot + bet); // Use functional update to ensure correct state
+                handleAIMove();
+            }, 1000);
+        }
+    };
+    
 
     useEffect(() => {
         console.log("TURN CHANGED: " + turn)
