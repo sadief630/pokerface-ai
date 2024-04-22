@@ -489,7 +489,7 @@ def determine_four_of_a_kind_value(cards):
 def check_full_house(cards):
   #  """Check for full house: Three cards of one rank and two cards of another rank."""
     value_counts = Counter(card['value'] for card in cards)
-    return set(value_counts.values()) == {3, 2}
+    return {3,2}.issubset(set(value_counts.values()))
 
 def determine_full_house_value(player_cards):
     value_counts = Counter(card['value'] for card in player_cards)
