@@ -51,7 +51,15 @@ def serialize_cards(hand, flipCount):
         flipCount-=1
         hand_list.append(result)
     return hand_list
-        
+
+
+import random
+def generate_response(probability):
+    if 0 <= probability <= 1:
+        return random.random() < probability
+    else:
+        raise ValueError("Probability must be between 0 and 1.")
+  
 @app.route("/", methods=["GET"])
 def home():
     return "The backend is running for your poker game!"
@@ -160,26 +168,68 @@ def agent_win_probability(agent_cards, visible_cards):
 
 @app.route("/get_agent_move", methods=["POST"])
 def get_agent_move():
-    global minimumBet
     data = request.get_json()
     # Get the agent's hole cards and the community cards from the request
     agent_cards = list(data.get('agentCards'))  # E.g., [{suit: "Diamonds", value: 14}, {suit: "Spades", value: 2}]
     visible_cards = data.get('visibleCards')  # E.g., [{suit: "Diamonds", value: 14}, {suit: "Spades", value: 2}, {suit: "Clubs", value: 7}]
+    minimum_bet = data.get('minimumBet')  # E.g., [{suit: "Diamonds", value: 14}, {suit: "Spades", value: 2}, {suit: "Clubs", value: 7}]
     # Validate the input data
-    if not agent_cards or not visible_cards:
+    if not agent_cards or not visible_cards or not minimum_bet:
         return jsonify({"error": "Invalid input data"}), 400
     # Calculate hand strength
     hand_strength = agent_win_probability(agent_cards, visible_cards)
-    # Determine the move based on hand strength
+
+    print("AGENT WIN PROBABILITY: " + str(hand_strength))
     move = "fold"  # Default move
     amountRaised = 0
     # Probability Decisions for moves 
+    # High Hand Strength
     if hand_strength > 0.7:
-        move = "raise"
-        amountRaised = hand_strength * 40 + minimumBet
-    elif hand_strength >= 0.5:
-        move = "call"
-        amountRaised = minimumBet
+        if minimum_bet > 20:
+            # Calculate if the agent is willing to raise
+            willing_to_raise = hand_strength * 40 + 20
+            if minimum_bet > willing_to_raise:
+                # If minimum bet is more than agent's willing raise, fold
+                move = "fold"
+            else:
+                # If agent decides to raise, raise to max of willing_to_raise and minimum_bet
+                move = "raise"
+                amountRaised = max(willing_to_raise, minimum_bet)
+        else:
+            # If minimum bet is 20 or less, raise to a calculated amount
+            move = "raise"
+            amountRaised = hand_strength * 40 + 20
+
+    # Medium Hand Strength
+    elif 0.5 <= hand_strength <= 0.7:
+        if minimum_bet > 20:
+            # If minimum bet is more than 20, call
+            move = "call"
+        else:
+            # If minimum bet is 20 or less, check
+            move = "check"
+        amountRaised = minimum_bet
+
+    # Low Hand Strength
+    else:
+        # If hand strength is below 50%, mostly check or fold
+        if minimum_bet > 20:
+            # If minimum bet is more than 20, fold
+            move = "fold"
+        else:
+            # If minimum bet is 20 or less, check
+            move = "check"
+        amountRaised = 0  # No raise
+
+    # Introduce randomness
+    if move != "fold":  # Agent won't fold regardless of randomness
+        send_it = generate_response(hand_strength)
+        if send_it:
+            if move == "raise":
+                amountRaised += random.randint(10, 40)  # Raise by a random amount
+            elif move == "call":
+                amountRaised = minimum_bet  # Call the minimum bet
+
     return jsonify({"move": move, "raise": round(amountRaised)})
 
 # Chen formula
@@ -392,7 +442,8 @@ def check_flush(cards):
     suit_counts = Counter(suits)
     return any(count >= 5 for count in suit_counts.values())
 
-def determine_flush_value(playerHand, winningSuit):
+def determine_flush_value(playerHand):
+    winningSuit = Counter(card['suit'] for card in playerHand).most_common()[0][0]    
     suited_cards = [card['value'] for card in playerHand if card['suit'] == winningSuit]
     max_value = max(suited_cards)
     return float(max_value) / 100

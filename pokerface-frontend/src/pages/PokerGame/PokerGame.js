@@ -30,7 +30,9 @@ function PokerGame() {
     const [playerBet, setPlayerBet] = useState(null);
     const [playerFolded, setPlayerFolded] = useState(false);
 
-    const minimumBet = 20;
+    const [currentMinimumBet, setCurrentMinimumBet] = useState(20);
+
+    // const minimumBet = 20;
 
     const startGame = () => {
         fetch('http://127.0.0.1:8000/start')
@@ -95,9 +97,9 @@ function PokerGame() {
                 body: JSON.stringify({
                     agentCards: agentCards,
                     visibleCards: visibleCards,
+                    minimumBet : currentMinimumBet
                 }),
             });
-    
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -186,7 +188,7 @@ function PokerGame() {
                 setResult(`It's a tie! Each player had a ${playerBestHand.handType}!`);
             }
         }
-        
+        console.log(result)
         // Reset the pot to zero
         setPot(0);
         setTimeout(() => {
@@ -206,57 +208,52 @@ function PokerGame() {
         console.log("Handling AI Move...");
         setActive("ai");
         setAITurnLabel("Thinking...");
-        
+        // helper function to handle whatever agent response is 
+        const handleMoveOutcome = (move, raise) => {
+            setAITurnLabel(`Agent move was: ${move} and the bet was: ${raise}`);
+            console.log(AITurnLabel)
+          setTimeout(() => {
+            if (move === 'fold') {
+                setTimeout(() => {
+                    setTurn(6);
+                    setAgentFolded(true);
+                }, 1000);
+            } else {
+              setPot(prevPot => prevPot + raise);
+              setAgentMoney(prevAgentMoney => prevAgentMoney - raise);
+              if (move === 'call' || (move === 'check' && playerMove === 'check')) {
+                setTimeout(() => {
+                    setAITurnLabel("Waiting on Player...");
+                    setActive("player")
+                    if(turn == 0){
+                        setTurn(3);
+                    }else{
+                        setTurn(prevTurn => prevTurn + 1);
+                    }
+                }, 1000);  
+              }else{
+                setTimeout(() => {
+                    setAITurnLabel("Waiting on Player...");
+                    setActive("player");
+                    setCurrentMinimumBet(raise);
+                }, 1000);  
+              }
+            }
+          }, 1000);
+        };
+
+        // fetch agent move and call helper function
         let agentMoveData;
         if (turn !== 0) {
-            agentMoveData = await fetchAgentMove(); // Wait for fetchAgentMove to complete
+            agentMoveData = await fetchAgentMove();
             const { move, raise } = agentMoveData;
-            console.log("Agent move was: " + move + " and the bet was: " + raise);
-            
-            setTimeout(() => {
-                setAITurnLabel("Agent move was: " + move + " and the bet was: " + raise);
-                if (move === 'fold') {
-                    setAgentFolded(true);
-                    setTurn(6);
-                } else {
-                    setTimeout(() => {
-                        setAgentMoney(prevAgentMoney => prevAgentMoney - raise);
-                        setPot(prevPot => prevPot + raise); // Use functional update to ensure correct state
-                        setAITurnLabel("Waiting on Player...");
-                        setActive("player");
-                        
-                        if (turn === 0) {
-                            setTurn(3);
-                        } else {
-                            setTurn(prevTurn => prevTurn + 1); // Increment turn after AI's move
-                        }
-                    }, 1000);
-                }
-            }, 1000);
+            setAgentMove(move);
+            setAgentBet(raise);
+            handleMoveOutcome(move, raise);
         } else {
-            setTimeout(() => {
-                console.log("Agent move was: " + agentMove + " and the bet was: " + agentBet);
-                setAITurnLabel("Agent move was: " + agentMove + " and the bet was: " + agentBet);
-                if (agentMove === 'fold') {
-                    setAgentFolded(true);
-                    setTurn(6);
-                } else {
-                    setTimeout(() => {
-                        setAgentMoney(prevAgentMoney => prevAgentMoney - agentBet);
-                        setPot(prevPot => prevPot + agentBet); // Use functional update to ensure correct state
-                        setAITurnLabel("Waiting on Player...");
-                        setActive("player");
-                        
-                        if (turn === 0) {
-                            setTurn(3);
-                        } else {
-                            setTurn(prevTurn => prevTurn + 1); // Increment turn after AI's move
-                        }
-                    }, 1000);
-                }
-            }, 1000);
+          handleMoveOutcome(agentMove, agentBet);
         }
-    };
+      };      
     
     const handlePlayerMove = (action, bet) => {
         setPlayerBet(bet);
@@ -269,6 +266,19 @@ function PokerGame() {
             setTimeout(() => {
                 setPlayerMoney(prevPlayerMoney => prevPlayerMoney - bet);
                 setPot(prevPot => prevPot + bet); // Use functional update to ensure correct state
+                if(action === 'call' || action === 'check' && agentMove === 'check'){ // agent previously checked, both players checked, next round.
+                    
+                    if(turn == 0){
+                        setTurn(3);
+                        
+                    }else{
+                        setTurn(prevTurn => prevTurn + 1);
+
+                    }
+                   
+                }else if(action === 'raise'){
+                    setCurrentMinimumBet(bet)
+                }
                 handleAIMove();
             }, 1000);
         }
@@ -276,6 +286,12 @@ function PokerGame() {
     
     useEffect(() => {
         console.log("TURN CHANGED: " + turn)
+        setCurrentMinimumBet(20)
+        setAgentMove(null)
+        setAgentBet(currentMinimumBet)
+        setPlayerMove(null)
+        setPlayerBet(currentMinimumBet)
+
         if (turn >= 1 && turn <= 5 && communityCards.length > 0) {
             // Flip community cards for each turn from 1 to current turn
             let updatedCommunityCards = [...communityCards];
@@ -283,7 +299,6 @@ function PokerGame() {
                 // Modify properties of the array
                 updatedCommunityCards[i].flipped = false;
             }
-            
             // Update state with the modified array
             setCommunityCards(updatedCommunityCards);
             
@@ -313,11 +328,10 @@ function PokerGame() {
             </div>
         );
     }
-
     return (
         <>
             <div className='poker-container'>
-                <GameState currentPlayer={active} currentPot={pot} result = {result}></GameState>
+                <GameState currentPlayer={active} currentPot={pot} result = {result} currentMinBet = {currentMinimumBet}></GameState>
                 <div className="poker-table">
                     <AgentConsole turnLabel={AITurnLabel} agentMoney = {agentMoney}></AgentConsole>
                     <Hand hand={agentCards}></Hand>
@@ -327,7 +341,7 @@ function PokerGame() {
                     </div>
                     <Hand hand={playerCards}></Hand>
                     <PlayerConsole onPlayerMove={handlePlayerMove} enabled={active === "player"}
-                                    funds = {playerMoney} minBet = {minimumBet}
+                                    funds = {playerMoney} minBet = {currentMinimumBet}
                     ></PlayerConsole>
                 </div>
             </div></>

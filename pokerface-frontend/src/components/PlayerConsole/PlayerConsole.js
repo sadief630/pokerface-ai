@@ -45,11 +45,12 @@ const PlayerConsole = ({ onPlayerMove, enabled, funds, minBet}) => {
     if (action === 'raise') {
       console.log(`Player raised by ${sliderValue}`);
     } else if (action === 'check') {
-      console.log('Player checked');
+      console.log('Player checked')
     } else if (action === 'fold') {
-      console.log('Player folded');
+      console.log('Player folded')
+    } else if (action === 'call'){
+      console.log('Player called')
     }
-    // Call the onPlayerMove function with the action
     onPlayerMove(action, sliderValue);
   };
 
@@ -62,15 +63,9 @@ const PlayerConsole = ({ onPlayerMove, enabled, funds, minBet}) => {
             <div className='text-style-body'>
                 $$$ : {funds}
             </div>
-      <div className="action-buttons">
-
-        <button disabled = {true}>Fold</button>
-        {sliderValue > 0 ? (
-          <button disabled = {true}>Raise</button>
-        ) : (
-          <button disabled = {true}>Check</button>
-        )}
-      </div>
+        <div className="action-buttons">
+          <button disabled={true}>Waiting...</button>
+        </div>
       <PrettoSlider
         value={sliderValue}
         onChange={handleSliderChange}
@@ -96,12 +91,12 @@ const PlayerConsole = ({ onPlayerMove, enabled, funds, minBet}) => {
         <button onClick={() => handleButtonClick('fold')}>Fold</button>
         {sliderValue > minBet ? (
           <button onClick={() => handleButtonClick('raise')}>Raise</button>
+        ) : minBet > 20 ? (
+          <button onClick={() => handleButtonClick('call')}>Call</button>
         ) : (
           <button onClick={() => handleButtonClick('check')}>Check</button>
         )}
       </div>
-
-    
 
       <PrettoSlider
         value={sliderValue}

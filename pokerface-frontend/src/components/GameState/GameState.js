@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import './GameState.css';
 
-const GameState = ({ currentPlayer, currentPot, result }) => {
-  const [myTurn, setMyTurn] = useState(true)
+const GameState = ({ currentPlayer, currentPot, result, currentMinBet }) => {
   return (
     <div className="game-state-container">
       <div className="game-state-info">
@@ -16,7 +15,10 @@ const GameState = ({ currentPlayer, currentPot, result }) => {
           <strong>Current Pot:</strong> ${currentPot}
         </div>
         <div className="info-item">
-        <strong>{result}</strong>
+          <strong>Current Minimum Bet:</strong> ${currentMinBet}
+        </div>
+        <div className="info-item">
+          <strong>{result}</strong>
         </div>
       </div>
     </div>
