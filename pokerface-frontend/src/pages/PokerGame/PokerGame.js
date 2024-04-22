@@ -15,6 +15,8 @@ function PokerGame() {
     const [active, setActive] = useState("player")
     const [pot, setPot] = useState(0)
     const [result, setResult] = useState("")
+    const [currentMinimumBet, setCurrentMinimumBet] = useState(20);
+
     // agent variables
     const [agentCards, setAgentCards] = useState([]);
     const [AITurnLabel, setAITurnLabel] = useState("Waiting on player...")
@@ -30,9 +32,8 @@ function PokerGame() {
     const [playerBet, setPlayerBet] = useState(null);
     const [playerFolded, setPlayerFolded] = useState(false);
 
-    const [currentMinimumBet, setCurrentMinimumBet] = useState(20);
-
-    // const minimumBet = 20;
+    const [playerPreviousBet, setPlayerPreviousBet] = useState(0);
+    const [agentPreviousBet, setAgentPreviousBet] = useState(0);
 
     const startGame = () => {
         fetch('http://127.0.0.1:8000/start')
@@ -61,8 +62,6 @@ function PokerGame() {
             .then(data => {
                 setAgentCards(data.agent_hole);
                 setPlayerCards(data.player_hole);
-                setAgentMove(data.agent_move);
-                setAgentBet(data.agent_bet);
             })
             .catch(error => {
                 console.error('There was a problem fetching hole cards:', error);
@@ -85,7 +84,32 @@ function PokerGame() {
             });
     };
 
-    const fetchAgentMove = async () => {
+    const fetchFirstAgentMove = async (bet) => {
+        try {
+            const response = await fetch('http://127.0.0.1:8000/get_first_agent_move', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    agentCards: agentCards,
+                    minimumBet: (bet >= 20 ? bet : 20), // players must match big blind or fold
+                    funds : agentMoney
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const data = await response.json();
+            console.log("Agent Move Response:", data);
+            const { move, raise } = data;
+            return { move, raise };
+        } catch (error) {
+            console.error('Error fetching agent move:', error);
+        }
+    };
+
+    const fetchAgentMove = async (bet) => {
         const visibleCards = communityCards.filter(card => !card.flipped);
         console.log("visibleCards: ", visibleCards); // Check if visibleCards are correct
         try {
@@ -97,26 +121,27 @@ function PokerGame() {
                 body: JSON.stringify({
                     agentCards: agentCards,
                     visibleCards: visibleCards,
-                    minimumBet : currentMinimumBet
+                    minimumBet: (bet > 0 ? bet : 0), // players can bet nothing if nothing was bet before (check)
+                    currentFunds : agentMoney
                 }),
             });
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                const errorMessage = await response.text(); // Get the detailed error message
+                throw new Error(`Network response was not ok. Error message: ${errorMessage}`);
             }
             const data = await response.json();
             console.log("Agent Move Response:", data);
             const { move, raise } = data;
-            return {move, raise};
+            return { move, raise };
         } catch (error) {
             console.error('Error fetching agent move:', error);
         }
     };
-    
+
     const handleStartGame = () => {
         startGame();
         fetchHoleCards();
         fetchCommunityCards();
-        // postBlinds(); // dealer posts 10, non-dealer posts 20.
     };
 
     const calculateBestHand = async (hand, communityCards) => {
@@ -134,7 +159,7 @@ function PokerGame() {
                 },
                 body: JSON.stringify(requestData)
             });
-            
+
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -147,27 +172,27 @@ function PokerGame() {
             return { score: 0, handType: 'Error' };
         }
     };
-    
+
     const evaluateGame = async () => {
         console.log("Game Evaluation: A player folded or all of the cards are flipped.");
-        setActive("ai");
+        setActive(null);
         const playerBestHand = await calculateBestHand(playerCards, communityCards);
         const agentBestHand = await calculateBestHand(agentCards, communityCards);
         console.log("AGENT HAND: " + JSON.stringify(agentBestHand));
         console.log("PLAYER HAND: " + JSON.stringify(playerBestHand));
-        if(agentFolded){
+        if (agentFolded) {
             setAITurnLabel(`Agent folded. Player wins the pot with a ${agentBestHand.handType}!`);
             setResult(`Agent folded. Player wins the pot with a ${agentBestHand.handType}!`)
             setPlayerMoney(playerMoney + pot);
             setAgentFolded(false)
         }
-        else if(playerFolded){
+        else if (playerFolded) {
             setAITurnLabel(`Player folded. AI wins the pot with a ${playerBestHand.handType}!`);
             setResult(`Player folded. AI wins the pot with a ${playerBestHand.handType}!`)
             setAgentMoney(agentMoney + pot);
             setPlayerFolded(false)
         }
-        else{
+        else {
             // Compare player and AI hands
             if (playerBestHand.score > agentBestHand.score) {
                 // Player wins the pot
@@ -194,6 +219,8 @@ function PokerGame() {
         setTimeout(() => {
             setCommunityCards([]);
             setTimeout(() => {
+                setAgentPreviousBet(0);
+                setPlayerPreviousBet(0);
                 setTurn(0);
                 fetchCommunityCards();
                 fetchHoleCards();
@@ -204,58 +231,69 @@ function PokerGame() {
         }, 1000);
     };
 
-    const handleAIMove = async () => {
-        console.log("Handling AI Move...");
-        setActive("ai");
+    const handleAIMove = async (playerAction, bet) => {
         setAITurnLabel("Thinking...");
         // helper function to handle whatever agent response is 
         const handleMoveOutcome = (move, raise) => {
             setAITurnLabel(`Agent move was: ${move} and the bet was: ${raise}`);
-            console.log(AITurnLabel)
-          setTimeout(() => {
-            if (move === 'fold') {
-                setTimeout(() => {
-                    setTurn(6);
-                    setAgentFolded(true);
-                }, 1000);
-            } else {
-              setPot(prevPot => prevPot + raise);
-              setAgentMoney(prevAgentMoney => prevAgentMoney - raise);
-              if (move === 'call' || (move === 'check' && playerMove === 'check')) {
-                setTimeout(() => {
-                    setAITurnLabel("Waiting on Player...");
-                    setActive("player")
-                    if(turn == 0){
-                        setTurn(3);
-                    }else{
-                        setTurn(prevTurn => prevTurn + 1);
+            console.log(`Agent move was: ${move} and the bet was: ${raise}`)
+            console.log("Last player move was: " + playerAction + " and the bet was: " + bet)
+            setTimeout(() => {
+                if (move === 'fold') {
+                    setTimeout(() => {
+                        setTurn(prevTurn => 6);
+                        setAgentFolded(true);
+                    }, 1000);
+                } else {
+                    if (move === 'call') {
+                        raise = raise - agentPreviousBet
+                        setAgentMoney(prevAgentMoney => prevAgentMoney - raise);
+                        setPot(prevPot => prevPot + raise); // Use functional update to ensure correct state
+                    } else {
+                        setPot(prevPot => prevPot + raise);
+                        setAgentMoney(prevAgentMoney => prevAgentMoney - raise);
                     }
-                }, 1000);  
-              }else{
-                setTimeout(() => {
-                    setAITurnLabel("Waiting on Player...");
-                    setActive("player");
-                    setCurrentMinimumBet(raise);
-                }, 1000);  
-              }
-            }
-          }, 1000);
+                    setAgentPreviousBet(prevRaise => raise)
+                    if (move === 'call' || (move === 'check' && playerAction === 'check')) {
+                        setTimeout(() => {
+                            setAITurnLabel("Waiting on Player...");
+                            setActive("player")
+                            if (turn === 0) {
+                                setTurn(prevTurn => 3);
+                            } else {
+                                setTurn(prevTurn => prevTurn + 1);
+                            }
+                        }, 1000);
+                    } else {
+                        setTimeout(() => {
+                            setAITurnLabel("Waiting on Player...");
+                            setActive("player");
+                            setCurrentMinimumBet(raise);
+                        }, 1000);
+                    }
+                }
+            }, 2000);
         };
 
         // fetch agent move and call helper function
-        let agentMoveData;
         if (turn !== 0) {
-            agentMoveData = await fetchAgentMove();
+            let agentMoveData;
+            agentMoveData = await fetchAgentMove(bet);
             const { move, raise } = agentMoveData;
             setAgentMove(move);
             setAgentBet(raise);
             handleMoveOutcome(move, raise);
         } else {
-          handleMoveOutcome(agentMove, agentBet);
+            let firstMoveData;
+            firstMoveData = await fetchFirstAgentMove(bet); // calculate using chen strength to decrease computation time.
+            const { move, raise } = firstMoveData;
+            setAgentMove(move);
+            setAgentBet(raise);
+            handleMoveOutcome(move, raise);
         }
-      };      
-    
-    const handlePlayerMove = (action, bet) => {
+    };
+
+    const handlePlayerMove = async (action, bet) => {
         setPlayerBet(bet);
         setPlayerMove(action);
         if (action === 'fold') {
@@ -263,34 +301,57 @@ function PokerGame() {
             setTurn(6);
         } else {
             console.log('Player move was:' + action + " and the bet was: " + bet);
-            setTimeout(() => {
-                setPlayerMoney(prevPlayerMoney => prevPlayerMoney - bet);
-                setPot(prevPot => prevPot + bet); // Use functional update to ensure correct state
-                if(action === 'call' || action === 'check' && agentMove === 'check'){ // agent previously checked, both players checked, next round.
-                    
-                    if(turn == 0){
-                        setTurn(3);
-                        
-                    }else{
-                        setTurn(prevTurn => prevTurn + 1);
-
+            console.log('The players previous bet was' + playerPreviousBet);
+            await new Promise(resolve => {
+                setTimeout(() => {
+                    if (action === 'call') {
+                        bet = bet - playerPreviousBet;
+                        setPlayerMoney(prevPlayerMoney => prevPlayerMoney - bet);
+                        setPot(prevPot => prevPot + bet); // Use functional update to ensure correct state
+                    } else {
+                        setPlayerMoney(prevPlayerMoney => prevPlayerMoney - bet);
+                        setPot(prevPot => prevPot + bet); // Use functional update to ensure correct state
                     }
-                   
-                }else if(action === 'raise'){
-                    setCurrentMinimumBet(bet)
-                }
-                handleAIMove();
-            }, 1000);
+                    if (action === 'call' || (action === 'check' && agentMove === 'check')) {
+                        if (turn === 0) {
+                            setTurn(3);
+                            bet = 0;
+                            action = "call";
+                        } else {
+                            setTurn(prevTurn => prevTurn + 1);
+                        }
+                    } else if (action === 'raise') {
+                        setCurrentMinimumBet(prevBet => bet);
+                    }
+                    console.log("Handling AI Move...");
+                    setPlayerPreviousBet(prevPlayerBet => bet);
+                    setActive(prevActive => "ai");
+                    resolve(); // Resolve the promise after all state updates
+                    setTimeout(() => {
+                        handleAIMove(action, bet);
+                    }, 1000); // 3 seconds delay
+                }, 1000);
+            });
+            // Call handleAIMove outside the setTimeout
+            
         }
     };
     
+
     useEffect(() => {
         console.log("TURN CHANGED: " + turn)
-        setCurrentMinimumBet(20)
-        setAgentMove(null)
-        setAgentBet(currentMinimumBet)
-        setPlayerMove(null)
-        setPlayerBet(currentMinimumBet)
+        if(turn == 0){
+            setCurrentMinimumBet(prevMinimumBet => 20)
+        }else{
+            setCurrentMinimumBet(prevMinimumBet => 0)
+        }
+       
+        setAgentMove(prevMove => null)
+        setPlayerMove(prevMove => null)
+        setAgentBet(prevBet => 0)
+        setPlayerBet(prevBet => 0)
+        setAgentPreviousBet(prevBet => 0)
+        setPlayerPreviousBet(prevBet => 0)
 
         if (turn >= 1 && turn <= 5 && communityCards.length > 0) {
             // Flip community cards for each turn from 1 to current turn
@@ -301,7 +362,7 @@ function PokerGame() {
             }
             // Update state with the modified array
             setCommunityCards(updatedCommunityCards);
-            
+
         } else if (turn === 6) {
             // Unflip all community cards when turn is 6 and evaluate the game
             const updatedCommunityCards = [...communityCards];
@@ -331,9 +392,9 @@ function PokerGame() {
     return (
         <>
             <div className='poker-container'>
-                <GameState currentPlayer={active} currentPot={pot} result = {result} currentMinBet = {currentMinimumBet}></GameState>
+                <GameState currentPlayer={active} currentPot={pot} result={result} currentMinBet={currentMinimumBet}></GameState>
                 <div className="poker-table">
-                    <AgentConsole turnLabel={AITurnLabel} agentMoney = {agentMoney}></AgentConsole>
+                    <AgentConsole turnLabel={AITurnLabel} agentMoney={agentMoney}></AgentConsole>
                     <Hand hand={agentCards}></Hand>
                     <div className='community-cards'>
                         <Hand hand={communityCards}></Hand>
@@ -341,7 +402,7 @@ function PokerGame() {
                     </div>
                     <Hand hand={playerCards}></Hand>
                     <PlayerConsole onPlayerMove={handlePlayerMove} enabled={active === "player"}
-                                    funds = {playerMoney} minBet = {currentMinimumBet}
+                        funds={playerMoney} minBet={currentMinimumBet}
                     ></PlayerConsole>
                 </div>
             </div></>

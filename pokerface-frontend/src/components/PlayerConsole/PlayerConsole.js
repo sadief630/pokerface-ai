@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './PlayerConsole.css';
 import Slider from '@mui/material-next/Slider';
 import styled from '@emotion/styled';
@@ -36,10 +36,16 @@ const PrettoSlider = styled(Slider)({
 
 const PlayerConsole = ({ onPlayerMove, enabled, funds, minBet}) => {
   const [sliderValue, setSliderValue] = useState(minBet);
+  const [sliderMinimum, setSliderMinimum] = useState(minBet);
 
-  const handleSliderChange = (event) => {
-    setSliderValue(parseInt(event.target.value, 10));
+  const handleSliderChange = (event, newValue) => {
+    setSliderValue(newValue); // Use newValue directly from the Slider
   };
+   // Update sliderMinimum and sliderValue when minBet changes
+   useEffect(() => {
+    setSliderMinimum(minBet);
+    setSliderValue(minBet);
+  }, [minBet]);
 
   const handleButtonClick = (action) => {
     if (action === 'raise') {
@@ -80,7 +86,6 @@ const PlayerConsole = ({ onPlayerMove, enabled, funds, minBet}) => {
 
   return (
     <div className="poker-console">
-
       <div className='text-style-title'>
               Player (You!)
             </div>
@@ -101,7 +106,7 @@ const PlayerConsole = ({ onPlayerMove, enabled, funds, minBet}) => {
       <PrettoSlider
         value={sliderValue}
         onChange={handleSliderChange}
-        min={minBet}
+        min={sliderMinimum}
         size="large"
         step={1}
         max={funds}

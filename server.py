@@ -12,7 +12,6 @@ CORS(app)  # Enable CORS for all routes in your Flask app
 deck = None
 playerMoney = 1000
 agentMoney = 1000
-minimumBet = 20
 
 def get_deck():
     global deck
@@ -26,10 +25,23 @@ def init_money():
     playerMoney = 1000
     agentMoney = 1000
 
+def getCardObjNum(card):
+    if(card["value"] == "Ace"):
+        num = 14
+    elif(card["value"]  == "King"):
+        num = 13
+    elif(card["value"]  == "Queen"):
+        num = 12
+    elif(card["value"]  == "Jack"):
+        num = 11
+    else:
+        num = (int)(card["value"])
+    return num
+
 def getCardNum(card):
     if(card.value == "Ace"):
         num = 14
-    elif(card.value == "King"):
+    elif(card.value  == "King"):
         num = 13
     elif(card.value == "Queen"):
         num = 12
@@ -166,83 +178,151 @@ def agent_win_probability(agent_cards, visible_cards):
     )
     return hand_strength
 
-@app.route("/get_agent_move", methods=["POST"])
-def get_agent_move():
+
+
+@app.route("/get_first_agent_move", methods=["POST"])
+def get_first_agent_move():
     data = request.get_json()
     # Get the agent's hole cards and the community cards from the request
     agent_cards = list(data.get('agentCards'))  # E.g., [{suit: "Diamonds", value: 14}, {suit: "Spades", value: 2}]
-    visible_cards = data.get('visibleCards')  # E.g., [{suit: "Diamonds", value: 14}, {suit: "Spades", value: 2}, {suit: "Clubs", value: 7}]
     minimum_bet = data.get('minimumBet')  # E.g., [{suit: "Diamonds", value: 14}, {suit: "Spades", value: 2}, {suit: "Clubs", value: 7}]
-    # Validate the input data
-    if not agent_cards or not visible_cards or not minimum_bet:
-        return jsonify({"error": "Invalid input data"}), 400
-    # Calculate hand strength
-    hand_strength = agent_win_probability(agent_cards, visible_cards)
+    current_funds = data.get('funds')
+    agent_strength = chen_strength(agent_cards)
 
-    print("AGENT WIN PROBABILITY: " + str(hand_strength))
-    move = "fold"  # Default move
+    print("AGENT CHEN STRENGTH: " + str(agent_strength))
+    ideal_raise = (current_funds * (agent_strength / (current_funds * .05))) / 4
     amountRaised = 0
-    # Probability Decisions for moves 
-    # High Hand Strength
-    if hand_strength > 0.7:
-        if minimum_bet > 20:
-            # Calculate if the agent is willing to raise
-            willing_to_raise = hand_strength * 40 + 20
-            if minimum_bet > willing_to_raise:
-                # If minimum bet is more than agent's willing raise, fold
-                move = "fold"
-            else:
-                # If agent decides to raise, raise to max of willing_to_raise and minimum_bet
-                move = "raise"
-                amountRaised = max(willing_to_raise, minimum_bet)
-        else:
-            # If minimum bet is 20 or less, raise to a calculated amount
+    
+    if(agent_strength >= 6):
+        if(ideal_raise > minimum_bet):
             move = "raise"
-            amountRaised = hand_strength * 40 + 20
-
-    # Medium Hand Strength
-    elif 0.5 <= hand_strength <= 0.7:
-        if minimum_bet > 20:
-            # If minimum bet is more than 20, call
-            move = "call"
+            amountRaised = ideal_raise
         else:
-            # If minimum bet is 20 or less, check
-            move = "check"
-        amountRaised = minimum_bet
-
-    # Low Hand Strength
-    else:
-        # If hand strength is below 50%, mostly check or fold
-        if minimum_bet > 20:
-            # If minimum bet is more than 20, fold
+            move = "call"
+            amountRaised = min(minimum_bet, current_funds) # call or go all in. we are sending it.
+    elif(agent_strength >= 2): # we probably don't want to raise, but we will call if it's only a fraction of our money.
+        if(minimum_bet > (current_funds * .15)): # if the current bet is greater than 25% of our total funds, we really probably don't want to risk it.
             move = "fold"
         else:
-            # If minimum bet is 20 or less, check
-            move = "check"
-        amountRaised = 0  # No raise
+            send_it = generate_response(min((agent_strength / 4), 1)) # probability of calling is dependent on chen strength.
+            if(send_it):
+                move = "call"
+                amountRaised = min(minimum_bet, current_funds) # call or go all in. we are sending it.
+            else:
+                move = "fold"
+    else:
+        move = "fold"
 
-    # Introduce randomness
-    if move != "fold":  # Agent won't fold regardless of randomness
-        send_it = generate_response(hand_strength)
-        if send_it:
-            if move == "raise":
-                amountRaised += random.randint(10, 40)  # Raise by a random amount
-            elif move == "call":
-                amountRaised = minimum_bet  # Call the minimum bet
-
+    print("FIRST, THE AGENT WILL: " + move + " because the strength is: " + str(agent_strength)  + ", the current minimum bet is: " + str(minimum_bet) + ", and the agent has: " + str(current_funds))
     return jsonify({"move": move, "raise": round(amountRaised)})
+@app.route("/get_agent_move", methods=["POST"])
+def get_agent_move():
+    try:
+        data = request.get_json()
+        # Get the agent's hole cards and the community cards from the request
+        agent_cards = list(data.get('agentCards'))
+        visible_cards = data.get('visibleCards')
+        minimum_bet = data.get('minimumBet')
+        current_funds = data.get('currentFunds')
+
+        print(str(agent_cards) + str(visible_cards) + str(minimum_bet) + str(current_funds))
+
+        if minimum_bet is None:
+            minimum_bet = 0  # Set minimum_bet to 0 if it is None
+
+        # Validate the input data
+        if not agent_cards or not visible_cards or not current_funds:
+            return jsonify({"error": "Invalid input data", "agent_cards" : str(agent_cards), "visible" : str(visible_cards), "minbet" : str(minimum_bet), "curfunds" : str(current_funds)}), 400
+
+        # Calculate hand strength
+        hand_strength = agent_win_probability(agent_cards, visible_cards)
+        print("AGENT WIN PROBABILITY:", hand_strength)
+        print("THE MINIMUM BET IS CURRENTLY:", minimum_bet)
+
+        move = "fold"  # Default move
+        amountRaised = 0
+        # Probability Decisions for moves 
+
+        # High Hand Strength 
+        if hand_strength >= 0.9:
+            ideal_raise = ((current_funds * hand_strength) / 8)
+            if ideal_raise > minimum_bet:
+                move = "raise"
+                amountRaised = ideal_raise
+            elif minimum_bet == 0:
+                move = "check"
+                amountRaised = minimum_bet
+            else:
+                move = "call"
+                amountRaised = min(minimum_bet, current_funds)
+
+        # Medium-High Hand Strength
+        elif hand_strength >= 0.70:
+            ideal_raise = ((current_funds * hand_strength) / 12)
+            if ideal_raise > minimum_bet:
+                move = "raise"
+                amountRaised = ideal_raise
+            elif minimum_bet == 0:
+                move = "check"
+                amountRaised = minimum_bet
+            else:
+                if minimum_bet > (current_funds * .25):
+                    move = "fold"
+                else:
+                    send_it = generate_response(hand_strength)
+                    if send_it:
+                        move = "call"
+                        amountRaised = minimum_bet
+                    else:
+                        move = "fold"
+
+        # Medium Hand Strength
+        elif hand_strength >= 0.45:
+            ideal_raise = ((current_funds * hand_strength) / 20)
+            if ideal_raise > minimum_bet:
+                move = "raise"
+                amountRaised = ideal_raise
+            elif minimum_bet == 20:
+                move = "check"
+                amountRaised = minimum_bet
+            else:
+                if minimum_bet > (current_funds * .15):
+                    move = "fold"
+                else:
+                    send_it = generate_response(hand_strength)
+                    if send_it:
+                        move = "call"
+                        amountRaised = minimum_bet
+                    else:
+                        move = "fold"
+
+        # Low Hand Strength
+        elif hand_strength >= 0.25:
+            if minimum_bet > 20:
+                move = "fold"
+                amountRaised = 0
+            else:
+                move = "check"
+                amountRaised = 20
+
+        print("THE AGENT WILL:", move, "because the strength is:", hand_strength,
+              ", the current minimum bet is:", minimum_bet, ", and the agent has:", current_funds)
+        return jsonify({"move": move, "raise": round(amountRaised)})
+    except Exception as e:
+        print("ERROR:", e)
+        return jsonify({"error": "An error occurred"}), 500
 
 # Chen formula
 def chen_strength(cards):
     cardOne = cards[0]
     cardTwo = cards[1]
     score = 0
-    cardOneNum = getCardNum(cardOne)
-    cardTwoNum = getCardNum(cardTwo)
+    cardOneNum = getCardObjNum(cardOne)
+    cardTwoNum = getCardObjNum(cardTwo)
     highestCard = cardOne
-    if(cardTwo > cardOne):
+    if(cardTwo["value"] > cardOne["value"]):
         highestCard = cardTwo
-    val = highestCard.value
+    val = highestCard["value"]
     if(val == "Ace"):
         score += 10
     elif(val == "King"):
@@ -254,14 +334,14 @@ def chen_strength(cards):
     else:
         score += int(val)/2
 
-    if(cardOne.value == 5 and cardTwo.value == 5):
+    if(cardOne["value"]  == 5 and cardTwo["value"]  == 5):
         score = 6
-    elif(cardOne.value == cardTwo.value):
+    elif(cardOne["value"]  == cardTwo["value"] ):
         score *= 2
         if score < 5:
             score = 5
 
-    if(cardOne.suit == cardTwo.suit):
+    if(cardOne["suit"] == cardTwo["suit"] ):
         score += 2
 
     diff = abs(cardTwoNum - cardOneNum) - 1
@@ -269,7 +349,7 @@ def chen_strength(cards):
         score += 1
     if(diff == 1):
         score -=1
-        if(getCardNum(highestCard) < 12): # Add an extra point if connected or 1-gap and your highest card is lower than Q (since you then can make all higher straights)
+        if(getCardObjNum(highestCard) < 12): # Add an extra point if connected or 1-gap and your highest card is lower than Q (since you then can make all higher straights)
             score += 1
     if(diff == 2):
         score -=2
@@ -297,20 +377,6 @@ def holecards():
     agent_hole = deck.deal(2) 
     agent_hole.sort()
     agent_hole_list = serialize_cards(agent_hole, 2)
-    agent_hole_strength = chen_strength(agent_hole)
-
-    if(agent_hole_strength >= 10):
-        agent_bet = (agent_hole_strength / 1.5) * 15
-        agent_move = "raise"
-    elif(agent_hole_strength >= 7):
-        agent_move = "raise"
-        agent_bet = (agent_hole_strength / 2.2) * 10
-    elif(agent_hole_strength >= 2.5):
-        agent_move = "call"
-        agent_bet = minimum_bet
-    else:
-        agent_move = "fold"
-        agent_bet = 0
 
     agent_bet = round(agent_bet)
     player_hole = deck.deal(2)
@@ -319,11 +385,7 @@ def holecards():
 
     return jsonify(
         agent_hole = agent_hole_list,
-        agent_hole_strength = agent_hole_strength,
         player_hole = player_hole_list,
-        agent_move = agent_move,
-        agent_bet = agent_bet,
-        agent_money = agentMoney
     )
 
 @app.route("/communitycards", methods=["GET"])
@@ -353,7 +415,7 @@ def evaluate_hand(hand, community_cards):
     }
 
 
-    print(all_cards)
+    # print(all_cards)
     # Check each hand type in descending order of ranking
     if check_royal_flush(all_cards):
         return {"score": hand_ranking_scores["Royal Flush"], "handType": "Royal Flush"}
@@ -526,8 +588,8 @@ def evaluatehand():
     hand = data.get('hand')
     community_cards = data.get('communityCards')
 
-    print(hand)
-    print(community_cards)
+    # print(hand)
+    # print(community_cards)
     # Validate that the input data is present and correct
     if hand is None or community_cards is None:
         return jsonify({"error": "Invalid input data"}), 400
