@@ -308,21 +308,21 @@ def evaluate_hand(hand, community_cards):
     if check_royal_flush(all_cards):
         return {"score": hand_ranking_scores["Royal Flush"], "handType": "Royal Flush"}
     elif check_straight_flush(all_cards):
-        return {"score": hand_ranking_scores["Straight Flush"], "handType": "Straight Flush"}
+        return {"score": hand_ranking_scores["Straight Flush"] + determine_straight_flush_value(all_cards), "handType": "Straight Flush"}
     elif check_four_of_a_kind(all_cards):
-        return {"score": hand_ranking_scores["Four of a Kind"], "handType": "Four of a Kind"}
+        return {"score": hand_ranking_scores["Four of a Kind"] + determine_four_of_a_kind_value(all_cards), "handType": "Four of a Kind"}
     elif check_full_house(all_cards):
-        return {"score": hand_ranking_scores["Full House"], "handType": "Full House"}
+        return {"score": hand_ranking_scores["Full House"] + determine_full_house_value(all_cards), "handType": "Full House"}
     elif check_flush(all_cards):
-        return {"score": hand_ranking_scores["Flush"], "handType": "Flush"}
+        return {"score": hand_ranking_scores["Flush"] + determine_flush_value(all_cards), "handType": "Flush"}
     elif check_straight(all_cards):
-        return {"score": hand_ranking_scores["Straight"], "handType": "Straight"}
+        return {"score": hand_ranking_scores["Straight"] + determine_straight_value(all_cards), "handType": "Straight"}
     elif check_three_of_a_kind(all_cards):
-        return {"score": hand_ranking_scores["Three of a Kind"], "handType": "Three of a Kind"}
+        return {"score": hand_ranking_scores["Three of a Kind"] + determine_three_of_a_kind_value(all_cards), "handType": "Three of a Kind"}
     elif check_two_pair(all_cards):
-        return {"score": hand_ranking_scores["Two Pair"], "handType": "Two Pair"}
+        return {"score": hand_ranking_scores["Two Pair"] + determine_two_pair_value(all_cards), "handType": "Two Pair"}
     elif check_one_pair(all_cards):
-        return {"score": hand_ranking_scores["One Pair"], "handType": "One Pair"}
+        return {"score": hand_ranking_scores["One Pair"] + determine_pair_value(all_cards), "handType": "One Pair"}
     else:
         return {"score": hand_ranking_scores["High Card"], "handType": "High Card"}
 
@@ -336,23 +336,55 @@ def check_royal_flush(cards):
 
 def check_straight_flush(cards):
     # Check for straight flush: Five consecutive cards all of the same suit.
+    flag = False
     for suit in ['Hearts', 'Diamonds', 'Clubs', 'Spades']:
-        suited_cards = [card['value'] for card in cards if card['suit'] == suit]
-        suited_cards.sort()
-        for i in range(len(suited_cards) - 4):
-            if suited_cards[i] + 4 == suited_cards[i + 4]:
-                return True
-    return False
+        suited_cards = [card for card in cards if card['suit'] == suit]
+        if(flag != True):
+            flag = check_straight(suited_cards)
+    return flag
+
+def determine_straight_flush_value(cards):
+    suit_counts = Counter(card['suit'] for card in cards)
+    suited_cards = suited_cards = [card for card in cards if card['suit'] == suit_counts.most_common()[0][0]]
+    values = sorted(set(card['value'] for card in suited_cards))
+    start = 0
+    prevVal = -1
+    numConsecutive = 0
+
+    for i in range(len(values)-1):
+        if(i != 0 and numConsecutive != 5):
+            if(prevVal - values[i] == 1):
+                numConsecutive += 1
+            else:
+                numConsecutive = 0
+                start = i
+        prevVal = values[i]
+    
+    return float(values[start]) / 100
 
 def check_four_of_a_kind(cards):
    # """Check for four of a kind: Four cards of the same rank."""
     value_counts = Counter(card['value'] for card in cards)
     return 4 in value_counts.values()
 
+def determine_four_of_a_kind_value(cards):
+    # Determines the value of the pair that you have
+    value_counts = Counter(card['value'] for card in cards)
+    pairNumber = value_counts.most_common()[0]
+    additionalPoints = float(pairNumber[0]) / 100
+    return additionalPoints
+
 def check_full_house(cards):
   #  """Check for full house: Three cards of one rank and two cards of another rank."""
     value_counts = Counter(card['value'] for card in cards)
     return set(value_counts.values()) == {3, 2}
+
+def determine_full_house_value(player_cards):
+    value_counts = Counter(card['value'] for card in player_cards)
+    strongest_triplet = max(value_counts, key=lambda x: (value_counts[x], x))
+    full_house_value = float(strongest_triplet) / 100
+    
+    return full_house_value
 
 def check_flush(cards):
   #  """Check for flush: Five cards of the same suit."""
@@ -360,18 +392,55 @@ def check_flush(cards):
     suit_counts = Counter(suits)
     return any(count >= 5 for count in suit_counts.values())
 
+def determine_flush_value(playerHand, winningSuit):
+    suited_cards = [card['value'] for card in playerHand if card['suit'] == winningSuit]
+    max_value = max(suited_cards)
+    return float(max_value) / 100
+
 def check_straight(cards):
   #  """Check for straight: Five consecutive cards of different suits."""
     values = sorted(set(card['value'] for card in cards))
-    for i in range(len(values) - 4):
-        if values[i + 4] - values[i] == 4:
-            return True
-    return False
+
+    misses = 0
+    numConsecutive = 1
+
+    for i in range(len(values) - 1):
+        if(numConsecutive < 5):
+            if values[i] - values[i + 1] != -1:
+                misses += 1
+                numConsecutive = 1
+            else:
+                numConsecutive += 1
+
+    return misses < 2 and numConsecutive >= 5
+
+def determine_straight_value(cards):
+    values = sorted(set(card['value'] for card in cards), reverse=True)
+    start = 0
+    prevVal = -1
+    numConsecutive = 0
+
+    for i in range(len(values)-1):
+        if(i != 0 and numConsecutive != 5):
+            if(prevVal - values[i] == 1):
+                numConsecutive += 1
+            else:
+                numConsecutive = 0
+                start = i
+        prevVal = values[i]
+    
+    return float(values[start]) / 100
 
 def check_three_of_a_kind(cards):
   #  """Check for three of a kind: Three cards of the same rank."""
     value_counts = Counter(card['value'] for card in cards)
     return 3 in value_counts.values()
+
+def determine_three_of_a_kind_value(cards):
+    value_counts = Counter(card['value'] for card in cards)
+    tripletNumber = value_counts.most_common()[0]
+    additionalPoints = float(tripletNumber[0]) / 100
+    return additionalPoints
 
 def check_two_pair(cards):
  #   """Check for two pairs: Two cards of one rank and two cards of another rank."""
@@ -379,10 +448,24 @@ def check_two_pair(cards):
     pairs = sum(1 for count in value_counts.values() if count == 2)
     return pairs >= 2
 
+def determine_two_pair_value(cards):
+    value_counts = Counter(card['value'] for card in cards)
+    pairs = value_counts.most_common()
+    topPair = max(pairs[0][0], pairs[1][0])
+    topPairValue = float(topPair) / 100
+    return topPairValue
+
 def check_one_pair(cards):
   #  """Check for one pair: Two cards of the same rank."""
     value_counts = Counter(card['value'] for card in cards)
     return 2 in value_counts.values()
+
+def determine_pair_value(cards):
+    # Determiens the value of the pair that you have
+    value_counts = Counter(card['value'] for card in cards)
+    pairNumber = value_counts.most_common()[0]
+    additionalPoints = float(pairNumber[0]) / 100
+    return additionalPoints
 
 @app.route("/evaluatehand", methods=["POST"])
 def evaluatehand():
@@ -404,4 +487,4 @@ def evaluatehand():
     return jsonify(result)
 
 if __name__ == "__main__":
-    app.run()
+    app.run(port=8000)
