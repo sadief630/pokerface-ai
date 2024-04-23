@@ -96,7 +96,7 @@ const PlayerConsole = ({ onPlayerMove, enabled, funds, minBet}) => {
         <button onClick={() => handleButtonClick('fold')}>Fold</button>
         {sliderValue > minBet ? (
           <button onClick={() => handleButtonClick('raise')}>Raise</button>
-        ) : minBet > 20 ? (
+        ) : minBet > 0 ? (
           <button onClick={() => handleButtonClick('call')}>Call</button>
         ) : (
           <button onClick={() => handleButtonClick('check')}>Check</button>

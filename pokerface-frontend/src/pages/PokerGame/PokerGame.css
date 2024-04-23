@@ -22,3 +22,19 @@
     align-items: center;
     translate: 10%;
 }
+
+.playAgainButton {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 20%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    padding: 25px;
+    background-color: #007bff;
+    color: white;
+    border: 3px solid black; /* Border added */
+    border-radius: 5px;
+    font-size: 20px;
+    cursor: pointer;
+}

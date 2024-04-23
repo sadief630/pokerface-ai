@@ -213,7 +213,7 @@ def get_first_agent_move():
     else:
         move = "fold"
 
-    print("FIRST, THE AGENT WILL: " + move + " because the strength is: " + str(agent_strength)  + ", the current minimum bet is: " + str(minimum_bet) + ", and the agent has: " + str(current_funds))
+    print("FIRST, THE AGENT WILL: " + move + " and bet " + str(amountRaised) +" because the strength is: " + str(agent_strength)  + ", the current minimum bet is: " + str(minimum_bet) + ", and the agent has: " + str(current_funds))
     return jsonify({"move": move, "raise": round(amountRaised)})
 @app.route("/get_agent_move", methods=["POST"])
 def get_agent_move():
@@ -282,7 +282,7 @@ def get_agent_move():
             if ideal_raise > minimum_bet:
                 move = "raise"
                 amountRaised = ideal_raise
-            elif minimum_bet == 20:
+            elif minimum_bet == 0:
                 move = "check"
                 amountRaised = minimum_bet
             else:
@@ -298,14 +298,14 @@ def get_agent_move():
 
         # Low Hand Strength
         elif hand_strength >= 0.25:
-            if minimum_bet > 20:
+            if minimum_bet > 0:
                 move = "fold"
                 amountRaised = 0
             else:
                 move = "check"
-                amountRaised = 20
+                amountRaised = minimum_bet
 
-        print("THE AGENT WILL:", move, "because the strength is:", hand_strength,
+        print("THE AGENT WILL:", move, " and the bet is ", str(amountRaised), "because the strength is:", str(hand_strength),
               ", the current minimum bet is:", minimum_bet, ", and the agent has:", current_funds)
         return jsonify({"move": move, "raise": round(amountRaised)})
     except Exception as e:
