@@ -13,6 +13,8 @@ deck = None
 playerMoney = 1000
 agentMoney = 1000
 
+agent_pit = 0
+
 def get_deck():
     global deck
     deck = dealer.Deck(rebuild = True)
@@ -178,10 +180,9 @@ def agent_win_probability(agent_cards, visible_cards):
     )
     return hand_strength
 
-
-
 @app.route("/get_first_agent_move", methods=["POST"])
 def get_first_agent_move():
+    global agent_pit
     data = request.get_json()
     # Get the agent's hole cards and the community cards from the request
     agent_cards = list(data.get('agentCards'))  # E.g., [{suit: "Diamonds", value: 14}, {suit: "Spades", value: 2}]
@@ -213,10 +214,17 @@ def get_first_agent_move():
     else:
         move = "fold"
 
+    agent_pit += round(amountRaised)
+
     print("FIRST, THE AGENT WILL: " + move + " and bet " + str(amountRaised) +" because the strength is: " + str(agent_strength)  + ", the current minimum bet is: " + str(minimum_bet) + ", and the agent has: " + str(current_funds))
     return jsonify({"move": move, "raise": round(amountRaised)})
+
+
+
 @app.route("/get_agent_move", methods=["POST"])
 def get_agent_move():
+    global agent_pit
+
     try:
         data = request.get_json()
         # Get the agent's hole cards and the community cards from the request
@@ -239,12 +247,15 @@ def get_agent_move():
         print("AGENT WIN PROBABILITY:", hand_strength)
         print("THE MINIMUM BET IS CURRENTLY:", minimum_bet)
 
+        print("AGENT PIT")
+        print(agent_pit)
+
         move = "fold"  # Default move
         amountRaised = 0
         # Probability Decisions for moves 
 
         # High Hand Strength 
-        if hand_strength >= 0.9:
+        if hand_strength >= 0.90:
             ideal_raise = ((current_funds * hand_strength) / 8)
             if ideal_raise > minimum_bet:
                 move = "raise"
@@ -279,12 +290,16 @@ def get_agent_move():
         # Medium Hand Strength
         elif hand_strength >= 0.45:
             ideal_raise = ((current_funds * hand_strength) / 20)
-            if ideal_raise > minimum_bet:
-                move = "raise"
-                amountRaised = ideal_raise
-            elif minimum_bet == 0:
+            
+            if minimum_bet == 0:
                 move = "check"
                 amountRaised = minimum_bet
+            elif ideal_raise > minimum_bet:
+                move = "raise"
+                amountRaised = ideal_raise
+            elif agent_pit > 100 and (minimum_bet < agent_pit):
+                    move = "call"
+                    amountRaised = minimum_bet
             else:
                 if minimum_bet > (current_funds * .15):
                     move = "fold"
@@ -298,13 +313,17 @@ def get_agent_move():
 
         # Low Hand Strength
         elif hand_strength >= 0.25:
-            if minimum_bet > 0:
+            if agent_pit > 100 and (minimum_bet < agent_pit):
+                    move = "call"
+                    amountRaised = minimum_bet
+            elif minimum_bet > 0:
                 move = "fold"
                 amountRaised = 0
             else:
                 move = "check"
                 amountRaised = minimum_bet
 
+        agent_pit += round(amountRaised)
         print("THE AGENT WILL:", move, " and the bet is ", str(amountRaised), "because the strength is:", str(hand_strength),
               ", the current minimum bet is:", minimum_bet, ", and the agent has:", current_funds)
         return jsonify({"move": move, "raise": round(amountRaised)})

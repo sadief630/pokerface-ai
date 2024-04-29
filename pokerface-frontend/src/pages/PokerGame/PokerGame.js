@@ -320,6 +320,7 @@ function PokerGame() {
     const handlePlayerMove = async (action, bet) => {
         setPlayerBet(bet);
         setPlayerMove(action);
+        let turnTrack = turn
         if (action === 'fold') {
             setPlayerFolded(true);
             setTurn(6);
@@ -343,24 +344,28 @@ function PokerGame() {
                     if (action === 'call' || (action === 'check' && agentMove === 'check')) {
                         if (turn === 0) {
                             setTurn(3);
+                            turnTrack = 3
                             bet = 0;
                             action = "call";
                         } else {
+                            turnTrack++
                             setTurn(prevTurn => prevTurn + 1);
                         }
                     } else if (action === 'raise') {
                         setCurrentMinimumBet(prevBet => bet);
                     }
-                    console.log("Handling AI Move...");
-                    setPlayerPreviousBet(prevPlayerBet => bet);
-                    setActive(prevActive => "ai");
+                    if(turnTrack != 6){
+                        console.log("Handling AI Move...");
+                        setPlayerPreviousBet(prevPlayerBet => bet);
+                        setActive(prevActive => "ai");
+                    }
                     resolve(); // Resolve the promise after all state updates
                     setTimeout(() => {
                         if(action == "call"){ // future does not matter
                             action = null
                             bet = 0
                         }
-                        if(turn != 6){
+                        if(turnTrack != 6){
                             handleAIMove(action, bet);
                         }
                     }, 1500); // 3 seconds delay
