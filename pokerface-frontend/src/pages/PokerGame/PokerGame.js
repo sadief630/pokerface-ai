@@ -149,8 +149,8 @@ function PokerGame() {
 
     const handleStartGame = () => {
         startGame();
-        fetchHoleCards();
         fetchCommunityCards();
+        fetchHoleCards();
     };
 
     const calculateBestHand = async (hand, communityCards) => {

@@ -384,7 +384,7 @@ def start():
 
 @app.route("/holecards", methods=["GET"])
 def holecards():
-    get_deck()
+    global deck
     global playerMoney
     global agentMoney
 
@@ -411,8 +411,8 @@ def holecards():
 
 @app.route("/communitycards", methods=["GET"])
 def communitycards():
-    if deck is None:
-        get_deck()
+    global deck
+    get_deck()
     community_cards = deck.deal(5)
     return jsonify(
         community_cards = serialize_cards(community_cards, 5)
