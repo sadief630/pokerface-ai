@@ -390,8 +390,12 @@ def holecards():
     global playerMoney
     global agentMoney
 
+    global agent_pit
+
     agent_bet = 0
     minimum_bet = 20
+
+    agent_pit = 0
 
     agent_hole = deck.deal(2) 
     agent_hole.sort()

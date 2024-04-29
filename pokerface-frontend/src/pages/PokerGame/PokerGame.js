@@ -25,6 +25,8 @@ function PokerGame() {
     const [agentBet, setAgentBet] = useState(null)
     const [agentFolded, setAgentFolded] = useState(false);
 
+    const [blindsPosted, setBlindsPosted] = useState(false);
+
     // player variables
     const [playerCards, setPlayerCards] = useState([]);
     const [playerMoney, setPlayerMoney] = useState(1000);
@@ -64,6 +66,7 @@ function PokerGame() {
             .then(data => {
                 setAgentCards(data.agent_hole);
                 setPlayerCards(data.player_hole);
+                setBlindsPosted(false);
             })
             .catch(error => {
                 console.error('There was a problem fetching hole cards:', error);
@@ -126,7 +129,7 @@ function PokerGame() {
                     body: JSON.stringify({
                         agentCards: agentCards,
                         visibleCards: visibleCards,
-                        minimumBet: (bet > 0 ? bet : 0), // players can bet nothing if nothing was bet before (check)
+                        minimumBet: (bet > 0 ? (bet - agentPreviousBet) : 0), // players can bet nothing if nothing was bet before (check)
                         currentFunds : agentMoney
                     }),
                 });
@@ -269,14 +272,14 @@ function PokerGame() {
                         setAgentFolded(true);
                     }, 1000);
                 } else {
-                    if (move === 'call') {
-                        raise = raise - agentPreviousBet
-                        setAgentMoney(prevAgentMoney => prevAgentMoney - raise);
-                        setPot(prevPot => prevPot + raise); // Use functional update to ensure correct state
-                    } else {
-                        setPot(prevPot => prevPot + raise);
-                        setAgentMoney(prevAgentMoney => prevAgentMoney - raise);
-                    }
+                    // if (move === 'call') {
+                    //     // raise = raise - agentPreviousBet
+                    //     setAgentMoney(prevAgentMoney => prevAgentMoney - raise);
+                    //     setPot(prevPot => prevPot + raise); // Use functional update to ensure correct state
+                    // } else {
+                    setPot(prevPot => prevPot + raise);
+                    setAgentMoney(prevAgentMoney => prevAgentMoney - raise);
+                    // }
                     setAgentPreviousBet(prevRaise => raise)
                     if (move === 'call' || (move === 'check' && playerAction === 'check')) {
                         setTimeout(() => {
@@ -292,7 +295,14 @@ function PokerGame() {
                         setTimeout(() => {
                             setAITurnLabel("Waiting on Player...");
                             setActive("player");
-                            setCurrentMinimumBet(raise);
+                            if(move == 'raise'){
+                                setCurrentMinimumBet(prevBet => raise - currentMinimumBet);
+                            }
+                            if(raise >= bet){
+                                setCurrentMinimumBet(prevBet => raise - bet);
+                            }else{
+                                setCurrentMinimumBet(prevBet => raise);
+                            }
                         }, 1000);
                     }
                 }
@@ -352,7 +362,12 @@ function PokerGame() {
                             setTurn(prevTurn => prevTurn + 1);
                         }
                     } else if (action === 'raise') {
-                        setCurrentMinimumBet(prevBet => bet);
+                        if(blindsPosted){
+                            setCurrentMinimumBet(prevBet => bet - currentMinimumBet);
+                        }else{
+                            setCurrentMinimumBet(prevBet => bet);
+                            setBlindsPosted(true);
+                        }
                     }
                     if(turnTrack != 6){
                         console.log("Handling AI Move...");
