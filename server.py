@@ -6,9 +6,8 @@ from collections import Counter
 from itertools import combinations
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes in your Flask app
+CORS(app) 
 
-# Initialize the deck variable outside of routes
 deck = None
 playerMoney = 1000
 agentMoney = 1000
@@ -184,7 +183,6 @@ def agent_win_probability(agent_cards, visible_cards):
 def get_first_agent_move():
     global agent_pit
     data = request.get_json()
-    # Get the agent's hole cards and the community cards from the request
     agent_cards = list(data.get('agentCards'))  # E.g., [{suit: "Diamonds", value: 14}, {suit: "Spades", value: 2}]
     minimum_bet = data.get('minimumBet')  # E.g., [{suit: "Diamonds", value: 14}, {suit: "Spades", value: 2}, {suit: "Clubs", value: 7}]
     current_funds = data.get('funds')
@@ -498,7 +496,7 @@ def determine_straight_flush_value(cards):
     return float(values[start]) / 100
 
 def check_four_of_a_kind(cards):
-   # """Check for four of a kind: Four cards of the same rank."""
+   # Check for four of a kind: Four cards of the same rank
     value_counts = Counter(card['value'] for card in cards)
     return 4 in value_counts.values()
 
@@ -510,7 +508,7 @@ def determine_four_of_a_kind_value(cards):
     return additionalPoints
 
 def check_full_house(cards):
-  #  """Check for full house: Three cards of one rank and two cards of another rank."""
+  #  Check for full house: Three cards of one rank and two cards of another rank.
     value_counts = Counter(card['value'] for card in cards)
     return {3,2}.issubset(set(value_counts.values()))
 
@@ -522,7 +520,7 @@ def determine_full_house_value(player_cards):
     return full_house_value
 
 def check_flush(cards):
-  #  """Check for flush: Five cards of the same suit."""
+  #  Check for flush: Five cards of the same suit.
     suits = [card['suit'] for card in cards]
     suit_counts = Counter(suits)
     return any(count >= 5 for count in suit_counts.values())
@@ -534,7 +532,7 @@ def determine_flush_value(playerHand):
     return float(max_value) / 100
 
 def check_straight(cards):
-  #  """Check for straight: Five consecutive cards of different suits."""
+  #  Check for straight: Five consecutive cards of different suits.
     values = sorted(set(card['value'] for card in cards))
 
     misses = 0
@@ -568,7 +566,7 @@ def determine_straight_value(cards):
     return float(values[start]) / 100
 
 def check_three_of_a_kind(cards):
-  #  """Check for three of a kind: Three cards of the same rank."""
+  #  Check for three of a kind: Three cards of the same rank.
     value_counts = Counter(card['value'] for card in cards)
     return 3 in value_counts.values()
 
@@ -579,7 +577,7 @@ def determine_three_of_a_kind_value(cards):
     return additionalPoints
 
 def check_two_pair(cards):
- #   """Check for two pairs: Two cards of one rank and two cards of another rank."""
+ #   Check for two pairs: Two cards of one rank and two cards of another rank.
     value_counts = Counter(card['value'] for card in cards)
     pairs = sum(1 for count in value_counts.values() if count == 2)
     return pairs >= 2
@@ -592,7 +590,7 @@ def determine_two_pair_value(cards):
     return topPairValue
 
 def check_one_pair(cards):
-  #  """Check for one pair: Two cards of the same rank."""
+  #  Check for one pair: Two cards of the same rank.
     value_counts = Counter(card['value'] for card in cards)
     return 2 in value_counts.values()
 
@@ -605,20 +603,12 @@ def determine_pair_value(cards):
 
 @app.route("/evaluatehand", methods=["POST"])
 def evaluatehand():
-    # Parse the incoming JSON data from the request body
     data = request.get_json()
-    # Extract the hand and community cards from the data
     hand = data.get('hand')
     community_cards = data.get('communityCards')
-
-    # print(hand)
-    # print(community_cards)
-    # Validate that the input data is present and correct
     if hand is None or community_cards is None:
         return jsonify({"error": "Invalid input data"}), 400
-    # Return the hand score as a JSON response
     result = evaluate_hand(hand, community_cards)
-
     print(result) 
     return jsonify(result)
 
